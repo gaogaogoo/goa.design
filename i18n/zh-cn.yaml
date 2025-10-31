@@ -1,0 +1,76 @@
+# Site title and meta
+site_title: "Goa :: 设计优先。"
+site_description: "Goa 是一个功能强大的 Go 代码生成框架，以设计优先的方式构建惯用的 API 和微服务——清晰、可扩展、免样板。"
+
+# Navigation
+nav_search_placeholder: "搜索"
+nav_godoc: "GoDoc"
+nav_github: "GitHub"
+nav_edit: "编辑"
+
+# Footer
+footer_slogan: "设计优先。"
+footer_languages: "语言"
+footer_find_us: "在其他平台找到我们"
+footer_copyright: " 2015-%s 由 Raphael Simon 与 Goa 贡献者共同创作"
+footer_logo_by: "徽标由 Jason Melgoza 设计"
+
+# Hero Section
+hero_title: "设计优先！"
+hero_description: "告别样板代码，从设计真正重要的解决方案开始。</br>其余交给 Goa。"
+
+# Features Section
+feature_codegen_title: "加速开发"
+feature_codegen_desc: "Goa 可自动生成 30–50% 的代码。专注业务逻辑，传输层、校验、文档与客户端生成交给 Goa。"
+
+feature_design_title: "以设计为本"
+feature_design_desc: "你的设计即契约。Goa 确保实现、文档与客户端 SDK 始终完美同步，不再出现规格与代码偏离。"
+
+feature_best_practice_title: "最佳实践"
+feature_best_practice_desc: "内置校验、错误处理与中间件集成。以简驭繁，获得企业级的安全与可靠性。"
+
+# Section Navigation
+subsections_title: "本节内容"
+
+# Wizard
+wizard_section_title: "Goa 设计向导"
+wizard_section_description: "让由 AI 驱动的 <a href=\"https://chat.openai.com/g/g-mLuQDGyro-goa-design-wizard\">Goa 设计向导</a> 引导你创建 API"
+wizard_section_features: |
+  <ul>
+    <li>通过自然语言对话生成 Goa 设计</li>
+    <li>实时获得智能建议与最佳实践</li>
+    <li>结合示例与详解学习 Goa DSL</li>
+  </ul>
+wizard_section_cta: "开始使用"
+wizard_section_note: "(需要 <a href=\"https://openai.com/blog/chatgpt-plus\">ChatGPT Plus</a> 订阅)" 
+
+# Sponsors section
+sponsors_title: "赞助商"
+
+sponsor_incidentio_title: "incident.io：每次事故后更强地反弹"
+sponsor_incidentio_desc: "使用我们的平台，使你的团队可端到端处理事故。<br/>快速修复并从事故中学习，打造更具韧性的产品。"
+sponsor_incidentio_link: "了解更多"
+
+sponsor_speakeasy_title: "Speakeasy：为你的 API 提供企业级开发者体验"
+sponsor_speakeasy_desc: "我们的平台可轻松创建功能丰富、可用于生产的 SDK。<br/>为你的 API 提供应有的开发者体验，加速集成并减少错误。"
+sponsor_speakeasy_link: "与 Goa 集成"
+
+design_first_title: "把开发做对"
+design_first_description: "Goa 重新定义你在 Go 中构建微服务的方式。<br/>一次设计，Goa 即可生成可用于生产的服务端、类型安全的客户端与完整文档。<br/>专注真正重要的事：构建可扩展的优秀服务。"
+
+# Why Goa Section
+why_goa_title: "为何选择 Goa"
+why_goa_type_safe_title: "高速开发"
+why_goa_type_safe_desc: "借助自动代码生成，大幅缩短开发周期。减少 30–50% 的编写、测试与维护，显著缩短交付时间。"
+why_goa_boilerplate_title: "零样板"
+why_goa_boilerplate_desc: "不再复制粘贴处理器与中间件。专注业务逻辑，其余交给 Goa。"
+why_goa_production_title: "生产就绪"
+why_goa_production_desc: "被全球团队用于构建与扩展 API，经受实战检验，性能优异且可靠。"
+
+# Trust Section
+trust_section_title: "深受全球工程团队信赖"
+trust_section_subtitle: "加入不断壮大的 Goa 用户群，构建健壮、易维护的 API"
+
+# Common actions
+learn_more: "了解更多"
+get_started: "立即开始构建更好的服务"
