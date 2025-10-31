@@ -1,71 +1,55 @@
 ---
-title: Overriding Error Serialization
-linkTitle: Overriding Serialization
+title: 覆盖错误序列化
+linkTitle: 覆盖序列化
 weight: 6
-description: "Customize how Goa serializes errors by implementing custom error formatters and handling specific error types with tailored responses."
+description: "通过实现自定义错误格式化器，定制 Goa 的错误序列化方式，并以定制响应处理特定错误类型。"
 ---
 
-In Goa, errors are automatically handled by the framework, providing a
-consistent way to communicate issues such as validation errors, internal server
-errors, or custom business logic errors. However, there may be cases where you
-want to customize how these errors are serialized or presented to the client.
-This section explains how to override the default error serialization in Goa
-for any type of error, including the built-in validation errors.
+在 Goa 中，框架会自动处理错误，并以一致的方式传达诸如校验错误、内部服务器错误或自定义业务错误等问题。但在某些情况下，你可能希望定制这些错误的序列化方式或呈现给客户端的形式。本节解释如何在 Goa 中覆盖默认的错误序列化，适用于任何类型的错误，包括内置的校验错误。
 
-## Customizing Error Serialization
+## 自定义错误序列化
 
-Goa provides the ability to customize how errors are serialized by implementing a
-custom error formatter function. This formatter receives the error object and can
-inspect its properties to determine how it should be serialized in the response.
-The formatter can handle any type of error, including:
+Goa 允许通过实现自定义错误格式化函数来定制错误的序列化方式。该格式化器接收错误对象，并可检查其属性以决定在响应中如何进行序列化。该格式化器可以处理任意类型的错误，包括：
 
-- Built-in Goa validation errors
-- Custom service errors defined in your DSL
-- Standard Go errors
-- Third-party error types
+- Goa 内置的校验错误
+- 在 DSL 中定义的自定义服务错误
+- 标准 Go 错误
+- 第三方错误类型
 
-The formatter returns a response object that determines both the structure of the
-error payload and the HTTP status code to use. This gives you complete control
-over how errors are presented to API clients.
+格式化器返回一个响应对象，用于决定错误负载的结构以及应使用的 HTTP 状态码。这使你可以完全掌控错误在 API 客户端中的呈现方式。
 
-### Example: Custom Error Serialization for Specific Error Types
+### 示例：为特定错误类型定制序列化
 
-Consider a scenario where you want to customize the serialization of specific
-error types, such as missing field errors or custom business logic errors. You
-can achieve this by defining custom error types and a corresponding error
-formatter.
+考虑一种场景：你希望定制特定错误类型（例如缺失字段错误或自定义业务错误）的序列化。你可以通过定义自定义错误类型并提供对应的错误格式化器来实现。
 
-#### Step 1: Define Custom Error Types
+#### 步骤 1：定义自定义错误类型
 
-First, define custom error types that will be used to serialize specific errors.
-These types should implement the `Statuser` interface to return the appropriate
-HTTP status code.
+首先，定义用于序列化特定错误的自定义错误类型。这些类型应实现 `Statuser` 接口以返回合适的 HTTP 状态码。
 
 ```go
-// missingFieldError is the type used to serialize missing required field errors.
+// missingFieldError 用于序列化缺失必填字段的错误。
 type missingFieldError string
 
-// StatusCode returns 400 (BadRequest).
+// StatusCode 返回 400（BadRequest）。
 func (missingFieldError) StatusCode() int {
     return http.StatusBadRequest
 }
 
-// customBusinessError is the type used to serialize custom business logic errors.
+// customBusinessError 用于序列化自定义业务逻辑错误。
 type customBusinessError string
 
-// StatusCode returns 422 (Unprocessable Entity).
+// StatusCode 返回 422（Unprocessable Entity）。
 func (customBusinessError) StatusCode() int {
     return http.StatusUnprocessableEntity
 }
 ```
 
-#### Step 2: Implement the Custom Error Formatter
+#### 步骤 2：实现自定义错误格式化器
 
-Next, implement a custom error formatter that inspects the error and converts it
-into the appropriate custom error type based on the error's properties.
+接着，实现一个自定义错误格式化器，根据错误属性将错误转换为合适的自定义错误类型。
 
 ```go
-// customErrorResponse converts err into a custom error type based on the error's properties.
+// customErrorResponse 根据错误属性将 err 转换为自定义错误类型。
 func customErrorResponse(ctx context.Context, err error) Statuser {
     if serr, ok := err.(*goa.ServiceError); ok {
         switch serr.Name {
@@ -74,20 +58,18 @@ func customErrorResponse(ctx context.Context, err error) Statuser {
         case "business_error":
             return customBusinessError(serr.Message)
         default:
-            // Use Goa default for other errors
+            // 其他错误使用 Goa 默认处理
             return goahttp.NewErrorResponse(err)
         }
     }
-    // Use Goa default for all other error types
+    // 其他错误类型使用 Goa 默认处理
     return goahttp.NewErrorResponse(err)
 }
 ```
 
-#### Step 3: Use the Custom Error Formatter
+#### 步骤 3：使用自定义错误格式化器
 
-Finally, use the custom error formatter when instantiating your HTTP server or
-handler. This ensures that your custom error serialization logic is applied to
-all errors returned by your service.
+最后，在实例化 HTTP 服务器或处理器时使用该自定义错误格式化器。这样即可确保服务返回的所有错误都应用你的自定义序列化逻辑。
 
 ```go
 var (
@@ -100,21 +82,14 @@ var (
 }
 ```
 
-### Benefits of Custom Error Serialization
+### 自定义错误序列化的优势
 
-- **Consistency**: Custom error serialization allows you to maintain consistency in how errors are presented across your API including validation errors.
-- **Clarity**: You can provide more descriptive error messages or additional context that helps clients understand and resolve issues specific to your use case.
-- **Flexibility**: You can tailor error responses to meet specific requirements, such as integrating with existing client-side error handling logic or supporting custom business rules.
+- 一致性：自定义序列化可将包含校验错误在内的错误呈现保持一致。
+- 清晰性：可提供更具描述性的错误消息或附加上下文，帮助客户端理解并解决特定用例中的问题。
+- 灵活性：可按需定制错误响应，以适配现有的客户端错误处理逻辑或支持自定义业务规则。
 
-## Summary
+## 总结
 
-Custom error serialization in Goa provides a powerful way to tailor error
-responses to your specific needs while maintaining consistency across your API.
-By implementing custom error formatters and integrating them with Goa's error
-handling mechanisms, you can create more meaningful and actionable error
-responses for your clients.
+在 Goa 中进行自定义错误序列化为你提供了强大的手段，在保持 API 一致性的同时，满足特定需求。通过实现自定义错误格式化器并将其与 Goa 的错误处理机制集成，你可以为客户端提供更有意义、可操作的错误响应。
 
-Now that you understand how to customize error serialization, proceed to the
-next section on [Best Practices](../7-best-practices) to learn recommended
-patterns and strategies for implementing robust error handling in your Goa
-services.
+现在你已了解如何定制错误序列化，请继续阅读下一节[最佳实践](../7-best-practices)，学习在 Goa 服务中实现健壮错误处理的推荐模式与策略。

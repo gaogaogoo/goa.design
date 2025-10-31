@@ -1,60 +1,60 @@
 ---
-title: "Views and Result Types"
-description: "Understanding how Goa handles result type views, including view computation and marshalling"
+title: "视图与结果类型"
+description: "理解 Goa 如何处理结果类型视图，包括视图计算与编解码"
 weight: 9
 ---
 
-## Result Type Views Overview
+## 结果类型视图概览
 
-Views in Goa provide a powerful way to control how result types are rendered in responses. When a method returns a result type with views:
+视图（Views）为 Goa 提供了强大的响应渲染控制能力。当某个方法返回带有视图的结果类型时：
 
-1. The service method includes an additional view parameter
-2. A dedicated views package is generated at the service level
-3. View-specific validation logic is automatically generated
+1. 服务方法会包含一个额外的视图参数
+2. 会在服务级别生成专用的视图包（views package）
+3. 会自动生成与视图相关的校验逻辑
 
-## View Computation Process
+## 视图计算流程
 
-### Service Method Generation
+### 服务方法生成
 
-When a method returns a result type with multiple views:
+当方法返回具有多个视图的结果类型时：
 
-* The method signature includes an extra view parameter
-* The generated endpoint function uses this view to create a viewed result type
-* Constructors are generated to convert between regular and viewed result types
+* 方法签名会包含一个额外的视图参数
+* 生成的端点函数会使用该视图构造“带视图的结果类型”
+* 会生成构造函数，用于在普通结果类型与带视图结果类型之间转换
 
-### Views Package
+### 视图包
 
-The generated views package at the service level contains:
+在服务级别生成的视图包包含：
 
-* Viewed result type definitions for each method result
-* Fields use pointers to enable view-specific validation
-* Conversion functions between regular and viewed result types
+* 每个方法结果的“带视图的结果类型”定义
+* 字段使用指针以支持基于视图的校验
+* 在普通结果类型与带视图结果类型之间的转换函数
 
-## Marshalling and Transport
+## 编解码与传输
 
-### Server-Side Response
+### 服务端响应
 
-1. The viewed result type is marshalled into a server type
-2. Nil attributes are omitted from the response
-3. The view name is passed in the "Goa-View" header
+1. 将“带视图的结果类型”编解码为服务端类型
+2. 响应中会忽略为 nil 的属性
+3. 视图名称通过 "Goa-View" 头传递
 
-### Client-Side Response
+### 客户端响应
 
-1. Response is unmarshalled into the client type
-2. Transformed into the viewed result type
-3. View name is extracted from the "Goa-View" header
-4. View-specific validation is performed
-5. Viewed result type is converted back to service result type
+1. 将响应解码为客户端类型
+2. 转换成“带视图的结果类型”
+3. 从 "Goa-View" 头中提取视图名称
+4. 执行视图相关的校验
+5. 将“带视图的结果类型”再转换回服务结果类型
 
-## Default View Behavior
+## 默认视图行为
 
-* If no views are defined, Goa adds a "default" view automatically
-* To bypass view-specific logic, use the `Type` DSL instead of result type
-* The default view includes all basic fields of the result type
+* 若未定义视图，Goa 会自动添加一个 "default" 视图
+* 若希望绕过视图相关逻辑，可使用 `Type` DSL 而非结果类型
+* 默认视图包含结果类型的所有基础字段
 
-## Best Practices
+## 最佳实践
 
-* Use views to control data visibility for different contexts
-* Consider performance implications when designing views
-* Document view behavior in your API specification
-* Use meaningful view names that reflect their purpose 
+* 使用视图在不同上下文中控制数据可见性
+* 设计视图时考虑性能影响
+* 在 API 规范中记录视图的行为
+* 使用能准确表达用途的视图名称

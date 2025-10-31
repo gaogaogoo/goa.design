@@ -1,29 +1,22 @@
 ---
-title: "Basic REST API"
-linkTitle: "Basic REST API"
+title: "基础 REST API"
+linkTitle: "基础 REST API"
 weight: 1
-description: "Create a production-ready REST API with Goa using a concert management system example, covering API design, implementation, testing, and advanced encoding features."
+description: "通过演示演唱会管理系统的示例，使用 Goa 创建可用于生产的 REST API，涵盖 API 设计、实现、测试与高级编码（encoding）功能。"
 ---
 
-## Let's Build Something Amazing!
+## 一起来构建！
 
-This tutorial series walks you through building a complete concert management
-REST API using Goa's design-first approach. You'll learn to create endpoints
-for listing, creating, updating, and deleting concerts while maintaining clean
-separation of concerns and following REST conventions.
+本系列教程将带您使用 Goa 的设计优先（design‑first）方法构建一个完整的演唱会管理 REST API。您将学习如何创建用于列出、创建、更新和删除演唱会的端点，同时保持关注点分离并遵循 REST 约定。
 
-The tutorial demonstrates Goa's approach to:
-- **Design-first development** with type-safe API specifications
-- **Automatic validation** that happens before your business logic runs
-- **Consistent error handling** across all endpoints
-- **Pagination** for handling large datasets
-- **Auto-generated OpenAPI documentation** that stays current
-- **Strong typing** that catches issues at compile time
+本教程展示了 Goa 的做法：
+- 以设计为先的开发方式，使用类型安全的 API 规范
+- 在业务逻辑之前进行自动校验（validation）
+- 在所有端点上保持一致的错误处理
+- 支持分页以应对大数据集
+- 自动生成且始终最新的 OpenAPI 文档
+- 强类型，帮助在编译期发现问题
 
-> **📚 Working Example**: This tutorial uses the same code as the
-> [concerts example](https://github.com/goadesign/examples/tree/master/concerts)
-> in the official Goa examples repository. You can reference the complete
-> working code at any time.
+> 参考示例：本教程使用官方 Goa 示例仓库中的 [concerts 示例](https://github.com/goadesign/examples/tree/master/concerts) 相同的代码，您可以随时查看完整可运行的代码。
 
-By the end, you'll have hands-on experience building production-ready REST APIs
-with Goa's powerful design-first approach.
+完成本系列后，您将拥有使用 Goa 的设计优先方法构建生产级 REST API 的实践经验。

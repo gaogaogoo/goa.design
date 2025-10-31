@@ -1,75 +1,74 @@
 ---
-title: "Error Mapping"
+title: "错误映射"
 weight: 6
 ---
 
-Map your service errors to JSON‑RPC error codes using the DSL. Clear mappings
-help clients reason about failures and build robust retries.
+使用 DSL 将服务错误映射到 JSON‑RPC 错误码。清晰的映射有助于客户端理解失败原因并构建健壮的重试策略。
 
-## Standard codes
+## 标准错误码
 
-The JSON‑RPC 2.0 specification defines a set of standard error codes that are reserved for core protocol errors. These codes are negative integers and each represents a specific type of failure that can occur during the processing of a JSON‑RPC request:
+JSON‑RPC 2.0 规范定义了一组用于核心协议错误的标准错误码。这些码为负整数，每个代表处理 JSON‑RPC 请求时可能发生的一类失败：
 
-- **Parse error (`-32700`)**  
-  This error occurs when the server receives invalid JSON and is unable to parse the request. It typically indicates a syntax error in the JSON sent by the client.
+- **解析错误（`-32700`）**  
+  服务器收到的 JSON 无法解析，通常是客户端发送的 JSON 存在语法错误。
 
-- **Invalid request (`-32600`)**  
-  The received JSON is syntactically valid, but the structure of the request does not conform to the JSON‑RPC protocol (for example, missing required fields like `jsonrpc`, `method`, or `params`).
+- **无效请求（`-32600`）**  
+  收到的 JSON 语法有效，但请求结构不符合 JSON‑RPC 协议（例如缺少必需字段 `jsonrpc`、`method` 或 `params`）。
 
-- **Method not found (`-32601`)**  
-  The requested method does not exist or is not available on the server. This is returned when the `method` field in the request does not match any known method.
+- **方法未找到（`-32601`）**  
+  请求的方法在服务器上不存在或不可用。通常当请求中的 `method` 不匹配任何已知方法时返回。
 
-- **Invalid params (`-32602`)**  
-  The parameters provided in the request are invalid or do not match the expected types or structure for the method. This can include missing required parameters or parameters of the wrong type.
+- **无效参数（`-32602`）**  
+  请求提供的参数无效或与方法期望的类型/结构不匹配，包括缺少必需参数或参数类型错误等。
 
-- **Internal error (`-32603`)**  
-  An internal JSON‑RPC error occurred on the server while processing the request. This is a generic error for unexpected conditions not covered by the other codes.
+- **内部错误（`-32603`）**  
+  服务器在处理请求时发生内部 JSON‑RPC 错误。该错误用于不属于其他错误码覆盖范围的意外情况的一般性错误。
 
-These standard codes are reserved for protocol-level errors and should be used as appropriate to help clients distinguish between different classes of failures.
+这些标准错误码保留用于协议层错误，合理使用它们有助于客户端区分不同类型的失败。
 
-## Error declarations and scope
+## 错误声明与作用域
 
-Goa lets you declare errors at three levels. The level determines both visibility and whether an error is considered returnable by a method.
+Goa 允许你在三个层级声明错误。层级同时决定可见性以及一个错误是否可被方法返回。
 
-- API level (top‑level `API(...)`):
-  - Define the error details once (description, attributes/shape) so it can be referenced by services and methods.
-  - Optionally define a default transport mapping (when supported) so the code mapping does not need to be repeated.
-  - Declaring an error at the API level DOES NOT mean any method can return it. Methods must still opt‑in (directly or via service‑level declaration).
+- API 层级（顶层 `API(...)`）：
+  - 仅定义一次错误的细节（描述、属性/结构），以便服务与方法引用。
+  - 可选地定义默认传输映射（若支持），避免重复指定错误码映射。
+  - 在 API 层声明错误并不意味着所有方法都可返回它。方法仍需显式选择（直接在方法声明或通过服务层声明）。
 
-- Service level (`Service(...)`):
-  - Referencing `Error("name")` here means any method of the service may return this error.
-  - You can also provide a service‑wide JSON‑RPC mapping in the service `JSONRPC` block. Methods can still override it.
+- 服务层（`Service(...)`）：
+  - 在此引用 `Error("name")` 表示该服务的任一方法均可返回此错误。
+  - 你还可以在服务的 `JSONRPC` 块中提供服务范围的 JSON‑RPC 映射。方法级映射仍可覆盖它。
 
-- Method level (`Method(...)`):
-  - Declare or reference `Error("name")` to state the method may return it.
-  - Provide method‑specific JSON‑RPC mapping in the method `JSONRPC` block when it differs from the service‑wide mapping.
+- 方法层（`Method(...)`）：
+  - 在此声明或引用 `Error("name")`，表明该方法可能返回该错误。
+  - 当与服务范围映射不同，方法可在自身的 `JSONRPC` 块中提供特定的 JSON‑RPC 映射。
 
-Mapping precedence: method mapping overrides service mapping, which overrides any default defined at a higher level.
+映射优先级：方法级映射覆盖服务级映射，服务级映射覆盖更高层（API 级）定义的任何默认映射。
 
-## How to map
+## 映射方式
 
-Typical pattern:
+典型流程：
 
-1) Define the error once (API level), including description and, if desired, a default mapping.
-2) Make the error returnable where needed (service or method level) and provide more specific mappings only when necessary.
+1) 在 API 层定义一次错误（含描述，必要时附带默认映射）。
+2) 在需要处（服务或方法层）声明该错误为可返回，并仅在必要时提供更具体的映射。
 
-### Example
+### 示例
 
 ```go
-// API level: define the error details once (does not make it returnable)
+// API 层：仅定义一次错误细节（不会让它可返回）
 var _ = API("calc", func() {
     Error("unauthorized", func() { Description("User is not authenticated") })
-    // Optionally define a default mapping if supported in your setup
+    // 可选：若你的设置支持，可定义默认映射
     // JSONRPC(func() { Response("unauthorized", func() { Code(-32001) }) })
 })
 
-// Service level: make the error returnable by any method in this service
+// 服务层：使该错误可被本服务的任意方法返回
 var _ = Service("calc", func() {
     JSONRPC(func() { POST("/rpc") })
 
-    Error("unauthorized") // now any method may return it
+    Error("unauthorized") // 现在任意方法都可返回它
 
-    // Service‑wide mapping (methods can override)
+    // 服务范围映射（方法可覆盖）
     JSONRPC(func() {
         Response("unauthorized", func() { Code(-32001) })
     })
@@ -82,24 +81,22 @@ var _ = Service("calc", func() {
         })
         Result(Int)
 
-        // Method‑specific error
+        // 方法特定错误
         Error("div_zero")
         JSONRPC(func() { Response("div_zero", func() { Code(-32602) }) })
     })
 })
 ```
 
-## Summary
+## 总结
 
-- API‑level error: defines details/mapping reuse only; does not imply returnability.
-- Service‑level error: makes the error returnable by any method of the service.
-- Method‑level error: makes the error returnable by that method (and can override mappings).
+- API 层错误：仅定义细节/可复用映射；不意味着可返回。
+- 服务层错误：使该错误可由该服务的任一方法返回。
+- 方法层错误：使该错误可由该方法返回（并可覆盖映射）。
 
-## Guidelines
+## 指南
 
-- Prefer specific application errors mapped to appropriate codes.
-- Unmapped errors default to Internal error (-32603).
+- 优先将具体的应用错误映射到合适的 JSON‑RPC 错误码。
+- 未映射的错误默认使用内部错误（`-32603`）。
 
-Tip: Use consistent application error messages and, when helpful, include `data` with structured fields that aid debugging and client UX.
-
-
+提示：请保持应用错误消息的一致性；必要时在 `data` 中加入结构化字段以辅助调试与客户端体验。

@@ -1,85 +1,85 @@
 ---
-linkTitle: Http Middleware
-title: Http Middleware
+linkTitle: HTTP 中间件
+title: HTTP 中间件
 weight: 2
 description: >
-  Learn how to use HTTP middleware with Goa services to handle protocol-level concerns like logging, metrics, tracing, and request context.
+  学习如何在 Goa 服务中使用 HTTP 中间件处理协议层关注点，如日志、指标、追踪与请求上下文。
 ---
 
-HTTP middleware in Goa services handles protocol-level concerns like logging, metrics, tracing, and request context management. This guide shows you how to effectively use middleware in your Goa services.
+Goa 服务中的 HTTP 中间件用于处理协议层关注点，如日志、指标、追踪与请求上下文管理。本文介绍如何在 Goa 服务中高效使用中间件。
 
-## Core Concepts
+## 核心概念
 
-HTTP middleware wraps HTTP handlers to form a processing chain. Each middleware can perform actions before and after the request is handled:
+HTTP 中间件通过包裹 HTTP 处理器形成处理链。每个中间件可在请求处理前后执行操作：
 
 ```go
 func ExampleMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Pre-processing
-        // e.g., logging, metrics, tracing
+        // 预处理
+        // 例如：日志、指标、追踪
 
         next.ServeHTTP(w, r)
 
-        // Post-processing
-        // e.g., response logging, cleanup
+        // 后处理
+        // 例如：响应日志、清理
     })
 }
 ```
 
-## Common Middleware Stack
+## 常见中间件栈
 
-A typical Goa service uses the following middleware stack:
+典型的 Goa 服务使用如下中间件栈：
 
 ```go
-mux.Use(debug.HTTP())                               // Debug logging control
-mux.Use(otelhttp.NewMiddleware("service"))          // OpenTelemetry instrumentation
-mux.Use(log.HTTP(ctx))                              // Request logging
-mux.Use(goahttpmiddleware.RequestID())              // Request ID generation
-mux.Use(goahttpmiddleware.PopulateRequestContext()) // Goa context population
+mux.Use(debug.HTTP())                               // 调试日志控制
+mux.Use(otelhttp.NewMiddleware("service"))          // OpenTelemetry 探针
+mux.Use(log.HTTP(ctx))                              // 请求日志
+mux.Use(goahttpmiddleware.RequestID())              // 生成请求 ID
+mux.Use(goahttpmiddleware.PopulateRequestContext()) // 填充 Goa 上下文
 ```
 
-## Essential Middleware Types
+## 关键中间件类型
 
-### 1. Observability Middleware
+### 1. 可观测性中间件
 
-Handles logging, metrics, and tracing:
+处理日志、指标与追踪：
 
 ```go
-// Logging middleware with path filtering
+// 带路径过滤的日志中间件
 mux.Use(log.HTTP(ctx, 
     log.WithPathFilter(regexp.MustCompile(`^/(healthz|metrics)$`))))
 
-// OpenTelemetry tracing middleware
+// OpenTelemetry 追踪中间件
 mux.Use(otelhttp.NewMiddleware("service-name",
     otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)))
 ```
 
-### 2. Context Management
+### 2. 上下文管理
 
-Enriches the request context with useful information:
+向请求上下文中丰富信息：
 
 ```go
 func ContextEnrichmentMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Add request-scoped values
+        // 添加请求范围的值
         ctx := r.Context()
         ctx = context.WithValue(ctx, "request.start", time.Now())
         ctx = context.WithValue(ctx, "request.id", r.Header.Get("X-Request-ID"))
         
-        // Continue with enriched context
+        // 使用丰富后的上下文继续
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }
 ```
 
-### 3. Security Middleware
+### 3. 安全中间件
 
-Handles authentication and request validation:
+处理认证与请求校验：
 
 ```go
 func SecurityHeadersMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Set security headers
+        // 设置安全响应头
         w.Header().Set("X-Frame-Options", "DENY")
         w.Header().Set("X-Content-Type-Options", "nosniff")
         w.Header().Set("X-XSS-Protection", "1; mode=block")
@@ -89,30 +89,30 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-## Best Practices
+## 最佳实践
 
-### 1. Middleware Order
+### 1. 中间件顺序
 
-Order your middleware carefully - typically from outermost to innermost:
+谨慎安排中间件顺序，通常从最外层到最内层：
 
-1. Panic recovery
-2. Request ID generation
-3. Logging/Tracing
-4. Security headers
-5. Authentication
-6. Context population
-7. Business logic
+1. Panic 恢复
+2. 请求 ID 生成
+3. 日志/追踪
+4. 安全响应头
+5. 认证
+6. 上下文填充
+7. 业务逻辑
 
-### 2. Performance Optimization
+### 2. 性能优化
 
-Optimize middleware for performance:
+优化中间件性能：
 
 ```go
 func OptimizedMiddleware(next http.Handler) http.Handler {
-    // Pre-compile expensive objects
+    // 预编译高开销对象
     pathRegex := regexp.MustCompile(`^/api/v\d+/`)
     
-    // Use sync.Pool for frequently allocated objects
+    // 频繁分配对象使用 sync.Pool
     bufPool := sync.Pool{
         New: func() interface{} {
             return new(bytes.Buffer)
@@ -120,13 +120,13 @@ func OptimizedMiddleware(next http.Handler) http.Handler {
     }
     
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Skip middleware for non-matching paths
+        // 非匹配路径跳过中间件
         if !pathRegex.MatchString(r.URL.Path) {
             next.ServeHTTP(w, r)
             return
         }
         
-        // Use pooled resources
+        // 使用对象池资源
         buf := bufPool.Get().(*bytes.Buffer)
         buf.Reset()
         defer bufPool.Put(buf)
@@ -136,19 +136,19 @@ func OptimizedMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-### 3. Error Handling
+### 3. 错误处理
 
-Handle errors consistently:
+一致地处理错误：
 
 ```go
 func ErrorHandlingMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         defer func() {
             if err := recover(); err != nil {
-                // Log error with request context
+                // 使用请求上下文记录错误
                 log.Printf("panic recovered: %v", err)
                 
-                // Return 500 response
+                // 返回 500
                 http.Error(w, "Internal Server Error", http.StatusInternalServerError)
             }
         }()
@@ -158,26 +158,26 @@ func ErrorHandlingMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-## Integration with Goa Services
+## 与 Goa 服务集成
 
-When integrating middleware with a Goa service:
+在 Goa 服务中集成中间件：
 
 ```go
 func main() {
-    // 1. Create base muxer
+    // 1. 创建基础 muxer
     mux := goahttp.NewMuxer()
     
-    // 2. Create and mount Goa server
+    // 2. 创建并挂载 Goa 服务器
     server := genhttp.New(endpoints, mux, decoder, encoder, eh, eh)
     genhttp.Mount(mux, server)
     
-    // 3. Add middleware stack
-    mux.Use(debug.HTTP())                  // Debug logging
-    mux.Use(otelhttp.NewMiddleware("svc")) // Tracing
-    mux.Use(log.HTTP(ctx))                 // Request logging
-    mux.Use(goahttpmiddleware.RequestID()) // Request ID
+    // 3. 添加中间件栈
+    mux.Use(debug.HTTP())                  // 调试日志
+    mux.Use(otelhttp.NewMiddleware("svc")) // 追踪
+    mux.Use(log.HTTP(ctx))                 // 请求日志
+    mux.Use(goahttpmiddleware.RequestID()) // 请求 ID
     
-    // 4. Create HTTP server with timeouts
+    // 4. 创建带超时的 HTTP 服务
     httpServer := &http.Server{
         Addr:              ":8080",
         Handler:           mux,
@@ -188,41 +188,39 @@ func main() {
 }
 ```
 
-## Testing
+## 测试
 
-Test middleware in isolation and as part of the chain:
+在隔离与链路中测试中间件：
 
 ```go
 func TestMiddleware(t *testing.T) {
-    // Create test handler
+    // 创建测试处理器
     handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusOK)
     })
     
-    // Add middleware
+    // 添加中间件
     handler = YourMiddleware(handler)
     
-    // Create test request
+    // 创建测试请求
     req := httptest.NewRequest("GET", "/test", nil)
     rec := httptest.NewRecorder()
     
-    // Test
+    // 执行测试
     handler.ServeHTTP(rec, req)
     
-    // Assert results
+    // 断言结果
     if rec.Code != http.StatusOK {
         t.Errorf("got status %d, want %d", rec.Code, http.StatusOK)
     }
 }
 ```
 
-## Next Steps
+## 下一步
 
-- Learn about [HTTP Transport](@/docs/4-concepts/3-http) in Goa
-- Explore [Observability](@/docs/5-real-world/2-observability) patterns
-- Review [Security](@/docs/5-real-world/3-security) best practices
+- 了解 Goa 的[HTTP 传输](@/docs/4-concepts/3-http)
+- 探索[可观测性](@/docs/5-real-world/2-observability)模式
+- 查看[安全](@/docs/5-real-world/3-security)最佳实践
 
-HTTP middleware is a powerful tool for handling protocol-specific concerns in your
-Goa services. By following these patterns and best practices, you can create
-clean, maintainable, and efficient HTTP processing pipelines.
+HTTP 中间件是处理协议特定关注点的强大工具。遵循这些模式与最佳实践，你可以在 Goa 服务中构建干净、可维护且高效的 HTTP 处理管线。
 

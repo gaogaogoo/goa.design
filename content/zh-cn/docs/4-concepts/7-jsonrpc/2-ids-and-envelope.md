@@ -1,71 +1,70 @@
 ---
-title: "IDs and Envelope Mapping"
+title: "ID 与封装（Envelope）映射"
 weight: 2
 ---
 
-This page summarizes how JSON‑RPC IDs map to your Goa design and how they behave
-at runtime across transports.
+本页总结了 JSON‑RPC 的 ID 如何映射到你的 Goa 设计，以及它们在不同传输下的运行时行为。
 
-## Design rules
+## 设计规则
 
-- To map the JSON‑RPC `id` field in your Goa design, use the `ID("request_id", String)` DSL function within your payload or result type. This marks the attribute that will carry the JSON‑RPC `id` value in requests or responses, enabling correlation between requests and responses.
-- In your design, the attribute specified by `ID()` must always be of type `String`. While the JSON‑RPC protocol allows `id` values to be either strings or numbers on the wire, the Goa framework will automatically accept numeric IDs from clients and normalize them to strings internally. This ensures consistent handling of IDs in your service logic.
-- You may declare an ID attribute in the result type only if the payload also declares an ID. This restriction ensures that the response can be properly correlated with the original request. If the payload does not include an ID, the result type should not declare one either, as there would be no request ID to propagate or return.
+- 要在 Goa 设计中映射 JSON‑RPC 的 `id` 字段，请在负载或结果类型内使用 `ID("request_id", String)` DSL 函数。它标记将在请求或响应中承载 JSON‑RPC `id` 值的属性，从而实现请求与响应之间的关联。
+- 在你的设计中，由 `ID()` 指定的属性必须始终是 `String` 类型。尽管 JSON‑RPC 协议在线路上允许 `id` 既可以是字符串也可以是数字，Goa 框架会自动接受来自客户端的数字 ID 并在内部将其规范化为字符串，从而确保在服务逻辑中对 ID 进行一致处理。
+- 只有当负载同时声明了 ID 时，你才可以在结果类型中声明 ID 属性。此限制确保响应能够与原始请求正确关联。如果负载未包含 ID，则结果类型也不应声明 ID，因为没有可传播或返回的请求 ID。
 
-## Non‑streaming (HTTP)
+## 非流式（HTTP）
 
-- If the result ID is not set in your result type, the Goa framework will automatically set the response envelope's `id` field to match the original request's `id`. This means that, unless you explicitly include an ID attribute in your result and set its value, the server will handle the correlation for you by copying the request `id` into the response envelope. Importantly, in this case, the server does not inject the envelope `id` value into your result struct—your handler code will not see the `id` field in the result object unless you have explicitly declared it.
+- 如果你未在结果类型中设置结果 ID，Goa 框架会自动将响应封装（envelope）的 `id` 字段设置为原始请求的 `id`。这意味着除非你在结果中显式声明了 ID 属性并设值，否则服务器会通过将请求的 `id` 复制到响应封装中来为你处理关联。需要注意的是，在这种情况下，服务器不会把封装中的 `id` 注入到你的结果结构体中——除非你显式声明了它，你的处理函数不会在结果对象中看到该 `id` 字段。
 
-- If you want your handler logic to access the request `id` (for example, to log it, propagate it to downstream systems, or include it in your result), you should declare an ID attribute in your payload using the `ID()` DSL function. This makes the request `id` available to your handler as part of the payload struct. However, if your handler does not need to access the request `id`, you can omit the `ID()` declaration in the payload, and the framework will still handle request-response correlation transparently.
+- 如果你希望处理逻辑能够访问请求的 `id`（例如记录日志、向下游系统传播或包含在结果中），应在负载中使用 `ID()` DSL 函数声明一个 ID 属性。这样，请求的 `id` 就会作为负载结构的一部分提供给处理函数。不过，如果处理函数不需要访问请求 `id`，可以在负载中省略 `ID()` 声明，框架仍会透明地处理请求-响应关联。
 
-- Declaring an ID attribute in the result type is only necessary if you want to explicitly control the value of the response envelope's `id` (for example, to echo back a modified or application-specific ID), or if you want the handler to have access to the `id` in the result struct. In most cases, for non-streaming HTTP methods, it is sufficient to declare the ID in the payload only when needed, and omit it from the result unless you have a specific use case.
+- 仅当你希望显式控制响应封装的 `id` 值（例如回显一个修改后的或与业务相关的 ID），或者希望处理函数能够在结果结构中访问 `id` 时，才需要在结果类型中声明 ID 属性。对于非流式的 HTTP 方法，在大多数情况下只在需要时在负载中声明 ID 即可，除非有明确用途，否则可在结果中省略。
 
-## SSE (server streaming)
+## SSE（服务器流式）
 
-- `Send(ctx, event)` emits a JSON‑RPC notification to the client. In the context of SSE (Server-Sent Events), this means the message sent does not include an `id` field in the JSON‑RPC envelope. Notifications are "fire-and-forget" messages: the client receives the event, but there is no request/response correlation, and the client should not expect a reply or acknowledgment for these messages. This is useful for server-initiated updates, such as progress events, logs, or other asynchronous information.
+- `Send(ctx, event)` 会向客户端发送一个 JSON‑RPC 通知。在 SSE（服务器发送事件）的上下文中，这意味着发送的消息在 JSON‑RPC 封装中不包含 `id` 字段。通知是“发出即忘”的消息：客户端接收事件，但不存在请求/响应的关联，客户端也不应期待针对这些消息的回复或确认。这非常适用于服务器发起的更新，例如进度事件、日志或其他异步信息。
 
-- `SendAndClose(ctx, result)` sends a final JSON‑RPC response to the client and closes the stream. The response envelope's `id` field is determined as follows:
-  - If your result type includes an ID attribute (declared with `ID()` and set in your handler), the framework uses this value as the envelope's `id`. To prevent the same ID from appearing both in the envelope and inside the result object (which would be redundant), the framework automatically clears the ID field from the result before serializing it.
-  - If your result type does not include an ID attribute, or if the ID is not set, the framework automatically copies the original request's `id` into the response envelope. In this case, the result object sent to the client does not contain an ID field, but the envelope still provides the necessary correlation.
-  - This mechanism ensures that the client can always match the response to the original request, either by a custom ID you provide or by the framework's automatic propagation of the request ID.
+- `SendAndClose(ctx, result)` 会向客户端发送最终的 JSON‑RPC 响应并关闭流。响应封装的 `id` 字段按如下规则确定：
+  - 如果你的结果类型包含一个 ID 属性（通过 `ID()` 声明并在处理函数中赋值），框架会将该值用作封装的 `id`。为避免同一个 ID 同时出现在封装和结果对象中（造成冗余），框架会在序列化之前自动从结果中清除该 ID 字段。
+  - 如果结果类型未包含 ID 属性，或该 ID 未设置，框架会自动将原始请求的 `id` 复制到响应封装中。在这种情况下，发送给客户端的结果对象不包含 ID 字段，但封装仍提供必要的关联。
+  - 该机制确保客户端始终可以将响应与原始请求匹配，要么使用你提供的自定义 ID，要么依赖框架自动传播请求 ID。
 
-**Summary**
+**总结**
 
-- **Use `Send` for server-initiated notifications:**  
-  When you call `Send(ctx, event)` in an SSE (Server-Sent Events) method, the framework emits a JSON‑RPC notification to the client. In this case, the outgoing JSON‑RPC envelope does **not** include an `id` field. This is because notifications are designed to be "fire-and-forget" messages: the server sends information to the client (such as progress updates, logs, or asynchronous events), but the client does not send a response or acknowledgment, and there is no request/response correlation. This pattern is ideal for scenarios where the server needs to push updates to the client without expecting any reply.
+- **服务器发起的通知使用 `Send`：**  
+  在 SSE 方法中调用 `Send(ctx, event)` 时，框架会向客户端发送一个 JSON‑RPC 通知。此时，发出的 JSON‑RPC 封装不会包含 `id` 字段。这是因为通知被设计为“发出即忘”的消息：服务器向客户端发送信息（例如进度更新、日志或异步事件），客户端不发送响应或确认，也不存在请求/响应的关联。该模式非常适合服务器需要向客户端推送更新且不期望任何回复的场景。
 
-- **Use `SendAndClose` for final responses:**  
-  When you call `SendAndClose(ctx, result)`, the framework sends a final JSON‑RPC response to the client and closes the stream. The handling of the envelope's `id` field depends on your result type:
+- **最终响应使用 `SendAndClose`：**  
+  当你调用 `SendAndClose(ctx, result)` 时，框架会向客户端发送最终的 JSON‑RPC 响应并关闭流。封装 `id` 字段的处理取决于你的结果类型：
 
-    - If your result type **includes an ID attribute** (declared with `ID()` and set in your handler), the framework uses this value as the envelope's `id`. To avoid redundancy, the framework automatically removes the ID field from the result object before serializing it, so the ID only appears in the envelope and not inside the result payload.
+    - 如果你的结果类型**包含 ID 属性**（通过 `ID()` 声明并在处理函数中设值），框架会将该值作为封装的 `id`。为避免冗余，框架会在序列化前自动从结果对象中移除该 ID 字段，使得 ID 仅出现在封装中，而不在结果负载内。
 
-    - If your result type **does not include an ID attribute**, or if the ID is not set, the framework automatically copies the original request's `id` into the response envelope. In this case, the result object sent to the client does not contain an ID field, but the envelope still provides the necessary correlation.
+    - 如果你的结果类型**不包含 ID 属性**，或该 ID 未设置，框架会自动将原始请求的 `id` 复制到响应封装中。在这种情况下，发送给客户端的结果对象不包含 ID 字段，但封装仍提供必要的关联。
 
-  This mechanism ensures that the client can always match the final response to the original request, either by a custom ID you provide or by the framework's automatic propagation of the request ID. The framework manages the envelope and result fields for you, preventing duplication and ensuring correct request-response correlation in all cases.
+  该机制确保客户端始终能够将最终响应与原始请求匹配，要么通过你提供的自定义 ID，要么依赖框架自动传播请求 ID。框架会替你管理封装与结果字段，避免重复，并在所有情形下确保正确的请求-响应关联。
 
-## WebSocket (streaming)
+## WebSocket（流式）
 
-- When the server sends a reply to a client-initiated message over a WebSocket connection, the framework automatically uses the original request's `id` value in the response envelope. This ensures that each response can be correctly correlated with the corresponding request, even when multiple messages are in flight simultaneously.
+- 当服务器在 WebSocket 连接上回复由客户端发起的消息时，框架会在响应封装中自动使用原始请求的 `id` 值。这确保每个响应都能与对应的请求正确关联，即使同时有多条消息在传输。
 
-- If you want to enable bidirectional correlation—meaning both client and server can send messages that need to be matched with responses at the type level—you should declare an `ID()` attribute in both the `StreamingPayload` and `StreamingResult` types in your Goa design. This allows both sides to include and access the `id` in their respective message types, making it possible to match requests and responses programmatically within your handler logic.
+- 如果你希望实现双向关联——即客户端与服务器都可以发送需要在类型层面与响应匹配的消息——应在 Goa 设计中的 `StreamingPayload` 与 `StreamingResult` 类型中同时声明 `ID()` 属性。这样，两端都能在各自的消息类型中包含并访问 `id`，从而在处理逻辑中以编程方式匹配请求与响应。
 
-- For server-initiated notifications (messages sent by the server that are not replies to a specific client request), the framework omits the `id` field from the JSON‑RPC envelope. These notifications are "fire-and-forget" messages: the client receives them but does not send a response or acknowledgment, and there is no request/response correlation. This is useful for scenarios such as server-driven updates, alerts, or broadcast messages where no reply is expected.
+- 对于服务器发起的通知（即服务器发送的、并非针对某个特定客户端请求的回复的消息），框架会在 JSON‑RPC 封装中省略 `id` 字段。这类通知是“发出即忘”的消息：客户端接收它们但不会发送响应或确认，也不存在请求/响应的关联。该模式适用于诸如服务器驱动的更新、告警或广播消息等不期望回复的场景。
 
-## When to use `ID()`
+## 何时使用 `ID()`
 
-- **Non‑streaming methods (HTTP/SSE):**  
-  Use `ID()` in the payload type if you want your handler to access the request `id` (for example, for logging, tracing, or propagating to downstream systems). Declaring `ID()` in the payload is optional—if omitted, the framework will still handle request-response correlation automatically, but your handler will not see the `id` in the payload struct.  
-  Use `ID()` in the result type only if you want to explicitly control the value of the response envelope's `id` (for example, to echo back a modified or application-specific ID), or if you want the handler to have access to the `id` in the result struct. In most cases, for non-streaming methods, declaring `ID()` in the payload is sufficient, and you can omit it from the result unless you have a specific need.
+- **非流式方法（HTTP/SSE）：**  
+  如果你希望处理函数能够访问请求的 `id`（例如用于日志、追踪或传播到下游系统），请在负载类型中使用 `ID()`。在负载中声明 `ID()` 是可选的——若省略，框架仍会自动处理请求-响应关联，但你的处理函数不会在负载结构体中看到该 `id`。  
+  仅当你希望显式控制响应封装的 `id` 值（例如回显修改后的或特定于应用的 ID），或者希望处理函数在结果结构中访问 `id` 时，才在结果类型中使用 `ID()`。对于非流式方法，在大多数情况下只在负载中声明 `ID()` 即可，除非有明确需求，可在结果中省略。
 
-- **WebSocket bidirectional streaming:**  
-  For full bidirectional correlation—where both client and server can send messages that need to be matched with responses—declare `ID()` in both the `StreamingPayload` and `StreamingResult` types. This allows both sides to include and access the `id` in their respective message types, enabling programmatic correlation of requests and responses within your handler logic.
+- **WebSocket 双向流式：**  
+  若要实现完整的双向关联——即客户端与服务器都可发送需要与响应匹配的消息——请在 `StreamingPayload` 与 `StreamingResult` 类型中同时声明 `ID()`。这样双方都能在各自的消息类型中包含并访问 `id`，从而在处理逻辑中以编程方式完成请求与响应的关联。
 
-- **Notifications (fire-and-forget messages):**  
-  Do **not** declare `ID()` in the payload or result types for notifications. Notifications are messages that do not expect a response and are not correlated with a request, so the `id` field is omitted from the JSON‑RPC envelope. This applies to both client-initiated notifications (HTTP) and server-initiated notifications (SSE/WebSocket).
+- **通知（发出即忘的消息）：**  
+  对于通知，请不要在负载或结果类型中声明 `ID()`。通知不期望响应，且不与请求相关联，因此 JSON‑RPC 封装会省略 `id` 字段。这既适用于客户端发起的通知（HTTP），也适用于服务器发起的通知（SSE/WebSocket）。
 
-### DSL examples
+### DSL 示例
 
-Correlate request ids in handlers (non‑streaming):
+在处理函数中关联请求 ID（非流式）：
 
 ```go
 Method("track", func() {
@@ -79,7 +78,7 @@ Method("track", func() {
 })
 ```
 
-Bidirectional correlation over WebSocket:
+通过 WebSocket 实现双向关联：
 
 ```go
 Method("echo", func() {

@@ -1,50 +1,47 @@
 ---
-title: "JSON‑RPC Overview"
+title: "JSON‑RPC 概览"
 weight: 1
 ---
 
-Goa supports JSON‑RPC 2.0 over multiple transports:
+Goa 在多种传输上支持 JSON‑RPC 2.0：
 
-- HTTP (unary requests and responses)
-- HTTP Server‑Sent Events (SSE) for server‑initiated streaming
-- WebSocket for bidirectional streaming
+- HTTP（非流式的一元请求与响应）
+- HTTP 服务器发送事件（SSE），用于服务器发起的流式传输
+- WebSocket，用于双向流式传输
 
-Key properties:
+关键特性：
 
-- Batch requests and notifications are supported where applicable.
-- The same JSON‑RPC HTTP route can serve SSE by content negotiation using the
-  `Accept` header (`application/json` vs. `text/event-stream`).
-- JSON‑RPC WebSocket uses a single connection per service, shared by all
-  methods.
+- 在适用的场景下支持批量请求与通知。
+- 同一个 JSON‑RPC HTTP 路由可通过 `Accept` 头进行内容协商来提供 SSE（`application/json` 与 `text/event-stream`）。
+- JSON‑RPC WebSocket 每个服务使用单一连接，由所有方法共享。
 
-Related concepts: see [Transports](../6-transports) for the matrix of allowed
-combinations within one service and per method.
+相关概念：参见[传输](../6-transports)，了解单个服务及每个方法的允许组合矩阵。
 
 
-### Topics in this section
+### 本节主题
 
-- [IDs and Envelope Mapping](./2-ids-and-envelope)
-- [HTTP and SSE Semantics](./3-http-and-sse)
-- [WebSocket Streaming](./4-websocket-streaming)
-- [Batching and Notifications](./5-batching-and-notifications)
-- [Error Mapping](./6-error-mapping)
+- [ID 与封装（Envelope）映射](./2-ids-and-envelope)
+- [HTTP 与 SSE 语义](./3-http-and-sse)
+- [WebSocket 流式传输](./4-websocket-streaming)
+- [批处理与通知](./5-batching-and-notifications)
+- [错误映射](./6-error-mapping)
 
-If you prefer a guided build, start with the tutorial: [Basic JSON‑RPC Service](../../3-tutorials/3-jsonrpc-service/).
+如果你偏好按步骤构建，请从教程开始：[基础 JSON‑RPC 服务](../../3-tutorials/3-jsonrpc-service/)。
 
-### Method names
+### 方法名
 
-On the wire, the JSON‑RPC `method` value is the DSL method name (for example: `add`). Each service has a single JSON‑RPC endpoint, so names are scoped to the service and do not need a `service.method` prefix.
+在线路层，JSON‑RPC 的 `method` 值就是 DSL 的方法名（例如：`add`）。每个服务只有一个 JSON‑RPC 端点，因此方法名作用域为该服务，不需要 `service.method` 前缀。
 
-### Transport summary
+### 传输摘要
 
-| Transport | Connection            | Patterns                         | Batching            | Notifications |
+| 传输      | 连接                   | 模式                              | 批处理               | 通知          |
 |-----------|-----------------------|----------------------------------|---------------------|---------------|
-| HTTP      | Request/response      | Non‑streaming (unary)            | Yes (array body)    | Client → Yes  |
-| SSE       | Long‑lived HTTP resp. | Server streaming, mixed results  | Not applicable      | Server → Yes  |
-| WebSocket | Persistent (full‑duplex) | Client streaming, server streaming, bidirectional | Not typical (message‑oriented) | Both directions |
+| HTTP      | 请求/响应              | 非流式（一元）                    | 支持（数组请求体）    | 客户端 → 支持 |
+| SSE       | 长连接 HTTP 响应       | 服务器流式、混合结果              | 不适用               | 服务器 → 支持 |
+| WebSocket | 持久（全双工）         | 客户端流式、服务器流式、双向      | 非典型（消息导向）    | 双向          |
 
-Notes:
+注意：
 
-- SSE shares the same route as HTTP. The client selects SSE via `Accept: text/event-stream` and the method must declare a streaming result (or mixed results).
-- WebSocket is enabled by using `GET` on the JSON‑RPC endpoint. Non‑streaming methods are not supported over JSON‑RPC WebSocket.
+- SSE 与 HTTP 共享相同路由。客户端通过 `Accept: text/event-stream` 选择 SSE，且方法必须声明流式结果（或混合结果）。
+- 在 JSON‑RPC 端点上使用 `GET` 即启用 WebSocket。JSON‑RPC WebSocket 不支持非流式方法。
 

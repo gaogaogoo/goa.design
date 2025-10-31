@@ -1,172 +1,165 @@
 ---
-title: "Types of Interceptors"
-description: "Understanding different types of Goa interceptors and their use cases"
+title: "拦截器类型"
+description: "了解不同类型的 Goa 拦截器及其使用场景"
 weight: 2
 ---
 
-Goa supports several types of interceptors to handle different scenarios. This guide explains the different types and when to use them.
+Goa 支持多种拦截器以应对不同场景。本文解释各类拦截器及其适用时机。
 
-## Core Concepts
+## 核心概念
 
-When designing interceptors, there are three key dimensions to consider:
+在设计拦截器时，需要考虑三个关键维度：
 
-1. Server-side vs Client-side:
-   - Server-side interceptors run on the service implementation
-   - Client-side interceptors run in the generated client
+1. 服务端 vs 客户端：
+   - 服务端拦截器运行在服务实现侧
+   - 客户端拦截器运行在生成的客户端中
 
-2. Payload vs Result access:
-   - Payload: access/modify the incoming request
-   - Result: access/modify the outgoing response
+2. Payload vs Result 访问：
+   - Payload：访问/修改入站请求
+   - Result：访问/修改出站响应
 
-3. Read vs Write access:
-   - Read: inspect data without modification
-   - Write: modify or enrich data
+3. 读 vs 写 访问：
+   - 读：在不修改的前提下检查数据
+   - 写：修改或丰富数据
 
-Interceptors only need to reference the attributes they want to access by name -
-they don't need to redefine the complete attribute definition or description.
-The method design must include these attributes in its payload and result types.
+拦截器仅需按名称引用其要访问的属性——不需要重新定义完整的属性类型或描述。方法设计必须在其 Payload 与 Result 类型中包含这些属性。
 
-## Basic Patterns
+## 基本模式
 
-### Read-Only Access
+### 只读访问（Read-Only Access）
 
-Use this when you need to inspect but not modify data. Perfect for monitoring,
-logging, and validation:
+当需要检查但不修改数据时使用。适用于监控、日志与校验：
 
 ```go
 var Monitor = Interceptor("Monitor", func() {
-    Description("Collects metrics without modifying the data")
+    Description("在不修改数据的前提下采集指标")
     
-    // Read request size from payload
+    // 从 Payload 读取请求大小
     ReadPayload(func() {
-        Attribute("size")        // Type and description come from payload type
+        Attribute("size")        // 类型与描述源自 Payload 类型
     })
     
-    // Read response status from result
+    // 从 Result 读取响应状态
     ReadResult(func() {
-        Attribute("status")      // Type and description come from result type
+        Attribute("status")      // 类型与描述源自 Result 类型
     })
 })
 ```
 
-The `ReadPayload` and `ReadResult` DSL functions declare read-only access to payload and result attributes:
-- The interceptor only needs to list the attribute names it wants to access
-- Types and descriptions are inherited from the method's payload and result types
-- Multiple attributes can be listed in a single `ReadPayload` or `ReadResult` block
-- The interceptor implementation receives these attributes as read-only fields
+`ReadPayload` 与 `ReadResult` DSL 声明对 Payload 与 Result 属性的只读访问：
+- 拦截器仅需列出希望访问的属性名
+- 属性类型与描述从方法的 Payload 与 Result 类型继承
+- 同一个 `ReadPayload` 或 `ReadResult` 块可列出多个属性
+- 拦截器实现以只读字段的形式接收这些属性
 
-### Write Access
+### 写访问（Write Access）
 
-Use this pattern when the interceptor needs to modify or add data:
+当拦截器需要修改或添加数据时使用：
 
 ```go
 var Enricher = Interceptor("Enricher", func() {
-    Description("Adds context information to requests and responses")
+    Description("为请求与响应添加上下文信息")
     
-    // Add request ID to payload
+    // 向 Payload 添加请求 ID
     WritePayload(func() {
-        Attribute("requestID")   // Must be defined in payload type
+        Attribute("requestID")   // 必须在 Payload 类型中定义
     })
     
-    // Add timing to result
+    // 向 Result 添加计时信息
     WriteResult(func() {
-        Attribute("processedAt") // Must be defined in result type
+        Attribute("processedAt") // 必须在 Result 类型中定义
     })
 })
 ```
 
-The `WritePayload` and `WriteResult` DSL functions declare write access:
-- Listed attributes can be modified by the interceptor implementation
-- The method's payload and result types must include these attributes
-- Multiple write blocks can be defined if needed
-- Write access implicitly includes read access to the same attributes
+`WritePayload` 与 `WriteResult` DSL 声明写访问：
+- 列出的属性可由拦截器实现进行修改
+- 方法的 Payload 与 Result 类型必须包含这些属性
+- 如有需要可定义多个写块
+- 写访问隐含对相同属性的读访问
 
-### Combined Access
+### 组合访问（Combined Access）
 
-When an interceptor needs both read and write access, combine the patterns:
+当拦截器同时需要读与写访问时，可组合使用：
 
 ```go
 var DataProcessor = Interceptor("DataProcessor", func() {
-    Description("Processes both requests and responses")
+    Description("同时处理请求与响应")
     
-    // Transform request data
+    // 转换请求数据
     ReadPayload(func() {
-        Attribute("rawData")     // Input data from payload
-        Attribute("format")      // Current format
+        Attribute("rawData")     // 来自 Payload 的输入数据
+        Attribute("format")      // 当前格式
     })
     WritePayload(func() {
-        Attribute("processed")   // Transformed data
-        Attribute("newFormat")   // New format
+        Attribute("processed")   // 转换后的数据
+        Attribute("newFormat")   // 新格式
     })
     
-    // Transform response data
+    // 转换响应数据
     ReadResult(func() {
-        Attribute("status")      // Response status
-        Attribute("data")        // Response data
+        Attribute("status")      // 响应状态
+        Attribute("data")        // 响应数据
     })
     WriteResult(func() {
-        Attribute("enriched")    // Enriched response
-        Attribute("metadata")    // Added metadata
+        Attribute("enriched")    // 丰富后的响应
+        Attribute("metadata")    // 添加的元数据
     })
 })
 ```
 
-Key points about combining access patterns:
-- Read and write blocks can be mixed freely for both payload and result
-- Each block can list multiple attributes
-- The same attribute can appear in both read and write blocks
-- The order of blocks doesn't affect the implementation
+组合访问的要点：
+- 读与写块可在 Payload 与 Result 上自由混合
+- 每个块可列出多个属性
+- 同一属性可同时出现在读与写块中
+- 块的顺序不影响实现
 
-## Server-Side Interceptors
+## 服务端拦截器
 
-Server interceptors execute on the service implementation side, running after
-the request has been decoded but before the service method is called. They're
-perfect for implementing cross-cutting concerns like logging, metrics
-collection, request enrichment, and response transformation.
+服务端拦截器在服务实现侧执行：于请求解码之后、调用服务方法之前。适合用于日志、指标采集、请求丰富与响应转换等横切关注点。
 
-Here's an example of a server-side caching interceptor that caches responses for
-GET requests:
+以下为一个针对 GET 请求进行响应缓存的服务端拦截器示例：
 
 ```go
 var Cache = Interceptor("Cache", func() {
-    Description("Implements response caching for GET requests")
+    Description("为 GET 请求实现响应缓存")
     
-    // We need to read the record ID to use as cache key
+    // 读取记录 ID 作为缓存键
     ReadPayload(func() {
-        Attribute("recordID")    // UUID from payload type
+        Attribute("recordID")    // 来自 Payload 类型的 UUID
     })
     
-    // We'll add caching metadata to the response
+    // 向响应添加缓存元数据
     WriteResult(func() {
-        Attribute("cachedAt")    // String from result type
-        Attribute("ttl")         // Int from result type
+        Attribute("cachedAt")    // 来自 Result 类型的字符串
+        Attribute("ttl")         // 来自 Result 类型的整型
     })
 })
 ```
 
-This server-side interceptor demonstrates:
-- How to combine read access to payload with write access to result
-- That interceptors can be applied at the service level
-- The separation between attribute declaration in the DSL and implementation logic
-- That attribute types are defined by the method, not the interceptor
+该服务端拦截器展示了：
+- 如何将对 Payload 的只读访问与对 Result 的写访问进行组合
+- 拦截器可应用在服务级
+- DSL 中的属性声明与实现逻辑的分离
+- 属性类型由方法定义，而非拦截器定义
 
-The service design must include these attributes:
+服务设计必须包含这些属性：
 
 ```go
 var _ = Service("catalog", func() {
-    // Apply caching to all methods in the service
+    // 将缓存应用于服务的所有方法
     ServerInterceptor(Cache)
     
     Method("get", func() {
         Payload(func() {
-            // Define attribute used by Cache interceptor
-            Attribute("recordID", UUID, "Record identifier for cache key")
+            // 定义 Cache 拦截器所需属性
+            Attribute("recordID", UUID, "用作缓存键的记录标识")
         })
         Result(func() {
-            // Define attributes used by Cache interceptor
-            Attribute("cachedAt", String, "When the response was cached")
-            Attribute("ttl", Int, "Time-to-live in seconds")
-            // Other result fields...
+            // 定义 Cache 拦截器所需属性
+            Attribute("cachedAt", String, "响应被缓存的时间")
+            Attribute("ttl", Int, "存活时间（秒）")
+            // 其他结果字段...
         })
         HTTP(func() {
             GET("/{recordID}")
@@ -176,149 +169,144 @@ var _ = Service("catalog", func() {
 })
 ```
 
-## Client-Side Interceptors
+## 客户端拦截器
 
-Client interceptors execute on the client side before requests are sent to the
-server. They enable client-side behaviors like request enrichment, response
-processing, and client-side caching.
+客户端拦截器在请求发往服务端之前于客户端侧执行。它们用于实现请求丰富、响应处理与客户端缓存等行为。
 
-Here's an example of a client-side interceptor that adds client context and
-tracks rate limits:
+以下示例为一个添加客户端上下文并跟踪速率限制的客户端拦截器：
 
 ```go
 var ClientContext = Interceptor("ClientContext", func() {
-    Description("Enriches requests with client context and tracks rate limits")
+    Description("为请求添加客户端上下文并跟踪速率限制")
     
-    // Add client context to outgoing requests
+    // 向出站请求添加客户端上下文
     WritePayload(func() {
-        Attribute("clientVersion")  // String from payload type
-        Attribute("clientID")       // UUID from payload type
-        Attribute("region")         // String from payload type
+        Attribute("clientVersion")  // 来自 Payload 类型的字符串
+        Attribute("clientID")       // 来自 Payload 类型的 UUID
+        Attribute("region")         // 来自 Payload 类型的字符串
     })
     
-    // Track rate limiting information from responses
+    // 从响应中跟踪速率限制信息
     ReadResult(func() {
-        Attribute("rateLimit")           // From result type
-        Attribute("rateLimitRemaining")  // From result type
-        Attribute("rateLimitReset")      // From result type
+        Attribute("rateLimit")           // 来自 Result 类型
+        Attribute("rateLimitRemaining")  // 来自 Result 类型
+        Attribute("rateLimitReset")      // 来自 Result 类型
     })
 })
 ```
 
-This client-side interceptor illustrates:
-- How client interceptors modify outgoing requests using `WritePayload`
-- How they can read response data using `ReadResult`
-- That the same DSL patterns work for both client and server interceptors
-- The importance of declaring all needed attributes in the method design
+该客户端拦截器说明：
+- 客户端拦截器如何使用 `WritePayload` 修改出站请求
+- 如何使用 `ReadResult` 读取响应数据
+- 相同的 DSL 模式同时适用于客户端与服务端拦截器
+- 在方法设计中声明所有需要的属性非常重要
 
-The service must define these attributes:
+服务必须定义这些属性：
 
 ```go
 var _ = Service("inventory", func() {
-    // Ensure all client calls include context information
+    // 确保所有客户端调用都包含上下文信息
     ClientInterceptor(ClientContext)
     
     Method("list", func() {
         Payload(func() {
-            // Business logic attributes
-            Attribute("page", Int, "Page number")
-            Attribute("perPage", Int, "Items per page")
+            // 业务属性
+            Attribute("page", Int, "页码")
+            Attribute("perPage", Int, "每页条数")
             
-            // Required by ClientContext interceptor
-            Attribute("clientVersion", String, "Version of the client library")
-            Attribute("clientID", UUID, "Unique identifier for this client instance")
-            Attribute("region", String, "Geographic region of the client")
+            // ClientContext 拦截器所需
+            Attribute("clientVersion", String, "客户端库版本")
+            Attribute("clientID", UUID, "该客户端实例的唯一标识")
+            Attribute("region", String, "客户端所在地域")
         })
         Result(func() {
-            // Business logic attributes
+            // 业务属性
             Attribute("items", ArrayOf(Item))
             
-            // Required by ClientContext interceptor
-            Attribute("rateLimit", Int, "Current rate limit")
-            Attribute("rateLimitRemaining", Int, "Remaining requests in current window")
-            Attribute("rateLimitReset", Int, "When the rate limit window resets")
+            // ClientContext 拦截器所需
+            Attribute("rateLimit", Int, "当前速率限制")
+            Attribute("rateLimitRemaining", Int, "当前窗口剩余请求数")
+            Attribute("rateLimitReset", Int, "速率限制窗口重置时间")
         })
     })
 })
 ```
 
-## Streaming Interceptors
+## 流式拦截器
 
-Streaming interceptors handle streaming methods where either the payload,
-result, or both are streams of messages. They use special streaming variants of
-the access patterns:
+流式拦截器处理 Payload、Result 或两者为消息流的流式方法。它们使用专门的流式访问模式：
 
-- `ReadStreamingPayload`/`WriteStreamingPayload`: For client streams
-- `ReadStreamingResult`/`WriteStreamingResult`: For server streams
+- `ReadStreamingPayload`/`WriteStreamingPayload`：用于客户端流
+- `ReadStreamingResult`/`WriteStreamingResult`：用于服务端流
 
-Here's an example showing different streaming interceptor patterns:
+以下示例展示不同的流式拦截器模式：
 
 ```go
-// SERVER-SIDE interceptor that WRITES to streaming RESULTS
+// 服务端拦截器：写入流式结果
 var ServerProgressTracker = Interceptor("ServerProgressTracker", func() {
-    Description("Adds progress information to server stream responses")
+    Description("为服务端流响应添加进度信息")
     
     WriteStreamingResult(func() {
-        Attribute("percentComplete")  // Float32 from streaming result type
-        Attribute("itemsProcessed")   // Int from streaming result type
+        Attribute("percentComplete")  // 来自流式结果类型的 Float32
+        Attribute("itemsProcessed")   // 来自流式结果类型的 Int
     })
 })
 
-// CLIENT-SIDE interceptor that WRITES to streaming PAYLOADS
+// 客户端拦截器：写入流式请求
 var ClientMetadataEnricher = Interceptor("ClientMetadataEnricher", func() {
-    Description("Enriches outgoing client stream messages with metadata")
+    Description("为客户端流消息添加元数据")
     
     WriteStreamingPayload(func() {
-        Attribute("clientTimestamp")  // From streaming payload type
-        Attribute("clientRegion")     // From streaming payload type
+        Attribute("clientTimestamp")  // 来自流式请求类型
+        Attribute("clientRegion")     // 来自流式请求类型
     })
 })
 ```
 
-The streaming interceptor DSL introduces special patterns:
-- `ReadStreamingPayload`/`WriteStreamingPayload` for client streams
-- `ReadStreamingResult`/`WriteStreamingResult` for server streams
-- These patterns work the same way as their non-streaming counterparts
-- The difference is they apply to each message in the stream
-- The same attribute declaration rules apply: list only names, types come from the method
+流式拦截器 DSL 引入了专用模式：
+- 客户端流使用 `ReadStreamingPayload`/`WriteStreamingPayload`
+- 服务端流使用 `ReadStreamingResult`/`WriteStreamingResult`
+- 行为与非流式版本一致
+- 区别在于它们作用于流中的每条消息
+- 属性声明规则相同：仅列出名称，类型来源于方法
 
-Example service using streaming interceptors:
+使用流式拦截器的服务示例：
 
 ```go
 var _ = Service("fileProcessor", func() {
-    // Server streaming example
+    // 服务端流示例
     Method("processFile", func() {
-        Description("Process a file with progress updates")
-        Payload(FileRequest)              // Single request
-        StreamingResult(func() {          // Multiple responses
-            // Business logic fields
+        Description("处理文件并返回进度更新")
+        Payload(FileRequest)              // 单请求
+        StreamingResult(func() {          // 多响应
+            // 业务字段
             Attribute("data", Bytes)
             
-            // Required by ServerProgressTracker
+            // ServerProgressTracker 所需
             Attribute("percentComplete", Float32)
             Attribute("itemsProcessed", Int)
         })
         ServerInterceptor(ServerProgressTracker)
     })
     
-    // Client streaming example
+    // 客户端流示例
     Method("uploadFile", func() {
-        Description("Upload a file in chunks")
-        StreamingPayload(func() {         // Multiple requests
-            // Business logic fields
+        Description("分块上传文件")
+        StreamingPayload(func() {         // 多请求
+            // 业务字段
             Attribute("chunk", Bytes)
             
-            // Required by ClientMetadataEnricher
+            // ClientMetadataEnricher 所需
             Attribute("clientTimestamp", Int)
             Attribute("clientRegion", String)
         })
-        Result(UploadResult)              // Single response
+        Result(UploadResult)              // 单响应
         ClientInterceptor(ClientMetadataEnricher)
     })
 })
 ```
 
-## Next Steps
+## 下一步
 
-- Learn about [Interceptor Implementation](3-interceptor-implementation) details and patterns
-- Learn about [Best Practices](../4-best-practices) for implementing interceptors
+- 学习[拦截器实现](3-interceptor-implementation)的细节与模式
+- 了解实现拦截器的[最佳实践](../4-best-practices)

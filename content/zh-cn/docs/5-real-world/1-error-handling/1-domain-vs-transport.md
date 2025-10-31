@@ -1,100 +1,88 @@
 ---
-title: Domain Vs Transport
-weight: 1
-description: "Learn about the distinction between domain errors and transport errors in Goa, and how to effectively map between them."
+_title: 领域与传输
+_weight: 1
+description: "了解 Goa 中领域错误和传输错误之间的区别，以及如何有效地在它们之间进行映射。"
 ---
 
-When designing error handling in Goa, it's important to understand the
-distinction between domain errors and their transport representation. This
-separation allows you to maintain clean domain logic while ensuring proper error
-communication across different protocols.
+在 Goa 中设计错误处理时，了解领域错误与其传输表示之间的区别非常重要。这种分离使您能够保持清晰的领域逻辑，同时确保跨不同协议的正确错误通信。
 
-## Domain Errors
+## 领域错误
 
-Domain errors represent business logic failures in your application. They are
-protocol-agnostic and focus on what went wrong from a business logic
-perspective. Goa's default `ErrorResult` type is often sufficient for expressing
-domain errors - custom error types are optional and only needed for specialized
-cases.
+领域错误表示应用程序中的业务逻辑失败。它们与协议无关，专注于从业务逻辑角度看出了什么问题。Goa 的默认 `ErrorResult` 类型通常足以表达领域错误——自定义错误类型是可选的，仅在特殊情况下需要。
 
-### Using Default Error Type
+### 使用默认错误类型
 
-The default `ErrorResult` type combined with meaningful names, descriptions, and
-error properties can effectively express most domain errors:
+默认的 `ErrorResult` 类型与有意义的名称、描述和错误属性相结合，可以有效地表达大多数领域错误：
 
 ```go
 var _ = Service("payment", func() {
-    // Define domain errors using default ErrorResult type
+    // 使用默认 ErrorResult 类型定义领域错误
     Error("insufficient_funds", ErrorResult, func() {
-        Description("Account has insufficient funds for the transaction")
-        // Error properties help define error characteristics
-        Temporary()  // Error may resolve if user adds funds
+        Description("账户资金不足以进行交易")
+        // 错误属性有助于定义错误特征
+        Temporary()  // 如果用户充值，错误可能会解决
     })
 
     Error("card_expired", ErrorResult, func() {
-        Description("Payment card has expired")
-        // This is a permanent error until card is updated
+        Description("支付卡已过期")
+        // 这是一个永久性错误，直到卡更新为止
     })
 
     Error("processing_failed", ErrorResult, func() {
-        Description("Payment processing system temporarily unavailable")
-        Temporary()  // Can retry later
-        Fault()      // Server-side issue
+        Description("支付处理系统暂时不可用")
+        Temporary()  // 稍后可以重试
+        Fault()      // 服务器端问题
     })
     
     Method("process", func() {
-        // ... method definition
+        // ... 方法定义
     })
 })
 ```
 
-Domain errors should:
-- Have clear, descriptive names that reflect the business scenario
-- Include meaningful descriptions for documentation and debugging
-- Use error properties to indicate error characteristics
-- Be independent of how they will be transmitted
+领域错误应该：
+- 具有清晰、描述性的名称，以反映业务场景
+- 包括有意义的描述以用于文档和调试
+- 使用错误属性来指示错误特征
+- 独立于它们的传输方式
 
-### Custom Error Types (Optional)
+### 自定义错误类型（可选）
 
-For cases where additional structured error data is needed, you can define custom error types. See the
-[main error handling documentation](_index.md#custom-error-types) for detailed information about
-custom error types, including important requirements for the `name` field and the `struct:error:name`
-metadata.
+在需要额外结构化错误数据的情况下，您可以定义自定义错误类型。有关自定义错误类型的详细信息，包括对 `name` 字段和 `struct:error:name` 元数据的重要要求，请参阅[主要错误处理文档](_index.md#custom-error-types)。
 
 ```go
-// Custom type for when extra error context is required
+// 需要额外错误上下文时的自定义类型
 var PaymentError = Type("PaymentError", func() {
-    Description("PaymentError represents a failure in payment processing")
-    Field(1, "message", String, "Human-readable error message")
-    Field(2, "code", String, "Internal error code")
-    Field(3, "transaction_id", String, "Failed transaction ID")
-    Field(4, "name", String, "Error name for transport mapping", func() {
+    Description("PaymentError 表示支付处理失败")
+    Field(1, "message", String, "人类可读的错误消息")
+    Field(2, "code", String, "内部错误代码")
+    Field(3, "transaction_id", String, "失败的交易 ID")
+    Field(4, "name", String, "用于传输映射的错误名称", func() {
         Meta("struct:error:name")
     })
     Required("message", "code", "name")
 })
 ```
 
-## Transport Mapping
+## 传输映射
 
-Transport mappings define how domain errors are represented in specific
-protocols. This includes status codes, headers, and response formats.
+传输映射定义了领域错误在特定协议中的表示方式。这包括状态码、标头和响应格式。
 
-### HTTP Transport
+### HTTP 传输
 
 ```go
 var _ = Service("payment", func() {
-    // Define domain errors
+    // 定义领域错误
     Error("insufficient_funds", PaymentError)
     Error("card_expired", PaymentError)
     Error("processing_failed", PaymentError)
     
     HTTP(func() {
-        // Map domain errors to HTTP status codes
+        // 将领域错误映射到 HTTP 状态码
         Response("insufficient_funds", StatusPaymentRequired, func() {
-            // Add payment-specific headers
+            // 添加特定于支付的标头
             Header("Retry-After")
-            // Customize error response format
+            // 自定义错误响应格式
             Body(func() {
                 Attribute("error_code")
                 Attribute("message")
@@ -106,17 +94,17 @@ var _ = Service("payment", func() {
 })
 ```
 
-### gRPC Transport
+### gRPC 传输
 
 ```go
 var _ = Service("payment", func() {
-    // Same domain errors
+    // 相同的领域错误
     Error("insufficient_funds", PaymentError)
     Error("card_expired", PaymentError)
     Error("processing_failed", PaymentError)
     
     GRPC(func() {
-        // Map to gRPC status codes
+        // 映射到 gRPC 状态码
         Response("insufficient_funds", CodeFailedPrecondition)
         Response("card_expired", CodeInvalidArgument)
         Response("processing_failed", CodeUnavailable)
@@ -124,101 +112,101 @@ var _ = Service("payment", func() {
 })
 ```
 
-## Benefits of Separation
+## 分离的好处
 
-This separation of concerns provides several advantages:
+这种关注点分离提供了几个优势：
 
-1. **Protocol Independence**
-   - Domain errors remain focused on business logic
-   - Same error can be mapped differently for different protocols
-   - Easy to add new transport protocols
+1. **协议独立性**
+   - 领域错误仍然专注于业务逻辑
+   - 同一个错误可以针对不同协议进行不同映射
+   - 易于添加新的传输协议
 
-2. **Consistent Error Handling**
-   - Centralized error definitions
-   - Uniform error handling across services
-   - Clear mapping between domain and transport errors
+2. **一致的错误处理**
+   - 集中式错误定义
+   - 跨服务统一的错误处理
+   - 领域错误和传输错误之间的清晰映射
 
-3. **Better Documentation**
-   - Domain errors document business rules
-   - Transport mappings document API behavior
-   - Clear separation helps API consumers
+3. **更好的文档**
+   - 领域错误记录业务规则
+   - 传输映射记录 API 行为
+   - 清晰的分离有助于 API 使用者
 
-## Implementation Example
+## 实现示例
 
-Here's how this separation works in practice:
+以下是这种分离在实践中的工作方式：
 
-### Using Default ErrorResult
+### 使用默认 ErrorResult
 
 ```go
 func (s *paymentService) Process(ctx context.Context, p *payment.ProcessPayload) (*payment.ProcessResult, error) {
-    // Domain logic
+    // 领域逻辑
     if !hasEnoughFunds(p.Amount) {
-        // Return error using generated helper function
+        // 使用生成的辅助函数返回错误
         return nil, payment.MakeInsufficientFunds(
-            fmt.Errorf("account balance %d below required amount %d", balance, p.Amount))
+            fmt.Errorf("账户余额 %d 低于所需金额 %d", balance, p.Amount))
     }
     
     if isSystemOverloaded() {
-        // Return error for temporary system issue
+        // 返回临时系统问题的错误
         return nil, payment.MakeProcessingFailed(
-            fmt.Errorf("payment system temporarily unavailable"))
+            fmt.Errorf("支付系统暂时不可用"))
     }
     
-    // More processing...
+    // 更多处理...
 }
 ```
 
-### Using Custom Error Type (When Additional Context Needed)
+### 使用自定义错误类型（需要额外上下文时）
 
 ```go
 func (s *paymentService) Process(ctx context.Context, p *payment.ProcessPayload) (*payment.ProcessResult, error) {
-    // Domain logic
+    // 领域逻辑
     if !hasEnoughFunds(p.Amount) {
-        // Return domain error with additional context
+        // 返回带有附加上下文的领域错误
         return nil, &payment.PaymentError{
             Name:          "insufficient_funds",
-            Message:       "Account balance too low for transaction",
+            Message:       "账户余额过低，无法进行交易",
             Code:         "FUNDS_001",
             TransactionID: txID,
         }
     }
     
-    // More processing...
+    // 更多处理...
 }
 ```
 
-The transport layer automatically:
-1. Maps the domain error to the appropriate status code
-2. Formats the error response according to the protocol
-3. Includes any protocol-specific headers or metadata
+传输层会自动：
+1. 将领域错误映射到适当的状态码
+2. 根据协议格式化错误响应
+3. 包括任何特定于协议的标头或元数据
 
-## Best Practices
+## 最佳实践
 
-1. **Domain First**
-   - Design errors based on business requirements
-   - Use domain terminology in error messages
-   - Include relevant context for debugging
+1. **领域优先**
+   - 根据业务需求设计错误
+   - 在错误消息中使用领域术语
+   - 包括用于调试的相关上下文
 
-2. **Consistent Mapping**
-   - Use appropriate status codes for each protocol
-   - Maintain consistent mappings across services
-   - Document the mapping rationale
+2. **一致的映射**
+   - 为每个协议使用适当的状态码
+   - 在服务之间保持一致的映射
+   - 记录映射的基本原理
 
-3. **Error Properties**
-   - Use error properties (`Temporary()`, `Timeout()`, `Fault()`) to indicate error characteristics
-   - Consider implementing similar properties in custom error types
-   - Document how properties affect client behavior
+3. **错误属性**
+   - 使用错误属性（`Temporary()`、`Timeout()`、`Fault()`）来指示错误特征
+   - 考虑在自定义错误类型中实现类似的属性
+   - 记录属性如何影响客户端行为
 
-4. **Documentation**
-   - Document both domain meaning and transport behavior
-   - Include examples of error responses
-   - Explain retry strategies and client handling
+4. **文档**
+   - 同时记录领域含义和传输行为
+   - 包括错误响应示例
+   - 解释重试策略和客户端处理
 
-## Conclusion
+## 结论
 
-By separating domain errors from their transport representation, Goa enables you to:
-- Maintain clean domain logic
-- Provide protocol-appropriate error responses
-- Support multiple protocols consistently
-- Scale your error handling as your API grows
+通过将领域错误与其传输表示分离，Goa 使您能够：
+- 保持清晰的领域逻辑
+- 提供适合协议的错误响应
+- 一致地支持多种协议
+- 随着 API 的增长扩展错误处理
 

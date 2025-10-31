@@ -1,23 +1,13 @@
 ---
-linkTitle: Common Patterns
-title: Common Patterns
-description: This section explores battle-tested patterns and best practices for building robust, maintainable Goa services, covering challenges from service-to-service communication to authentication flows with practical examples and trade-off explanations.
+linkTitle: 常见模式
+title: 常见模式
+description: 本节探索用于构建健壮、易维护的 Goa 服务的经受实战检验的模式与最佳实践，涵盖从服务间通信到认证流程等挑战，并附带实用示例与权衡解释。
 weight: 1
 ---
 
-As you build real-world services with Goa, you'll encounter recurring challenges
-and design decisions that can significantly impact your application's
-maintainability, performance, and reliability. This section explores
-battle-tested patterns and best practices that have emerged from production
-deployments of Goa services.
+当你使用 Goa 构建真实世界的服务时，你会遇到反复出现的挑战和设计抉择，这些因素会显著影响应用的可维护性、性能与可靠性。本节将探索源自 Goa 服务生产部署的经受实战检验的模式与最佳实践。
 
-Whether you're architecting service-to-service communication, handling large
-file transfers, or implementing authentication flows, these patterns will help
-you make informed decisions and avoid common pitfalls. Each pattern is presented
-with practical examples and detailed explanations of the trade-offs involved,
-allowing you to adapt them to your specific needs while maintaining clean,
-efficient, and maintainable code.
+无论你正在设计服务间通信、处理大文件传输，还是实现认证流程，这些模式都将帮助你做出明智决策并避免常见陷阱。每个模式都配有实用示例和对相关权衡的详细说明，使你能够在保持代码整洁、高效、可维护的同时，按需调整以满足具体需求。
 
-Let's explore these proven patterns to help you build robust and scalable
-services with Goa.
+让我们一起探索这些经过验证的模式，帮助你用 Goa 构建健壮且可扩展的服务。
 

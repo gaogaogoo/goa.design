@@ -1,20 +1,17 @@
 ---
-title: Stream Interceptors
+title: 流式拦截器
 weight: 2
 description: >
-  Learn how to implement streaming gRPC interceptors for Goa services, with practical examples of common patterns.
+  学习如何为 Goa 服务实现 gRPC 流式拦截器，并通过常见模式的实用示例加以说明。
 ---
 
-## Stream gRPC Interceptors
+## gRPC 流式拦截器
 
-Stream interceptors handle streaming RPCs in gRPC services. They're used when
-either the client, server, or both send multiple messages over a single
-connection. This guide shows you how to implement effective stream interceptors
-for your Goa services.
+流式拦截器用于处理 gRPC 服务中的流式 RPC。当客户端、服务端或双方在同一连接中发送多条消息时，就需要使用它们。本文将展示如何为你的 Goa 服务实现高效的流式拦截器。
 
-## Basic Structure
+## 基本结构
 
-A stream interceptor follows this pattern:
+一个流式拦截器通常遵循以下模式：
 
 ```go
 func StreamInterceptor(srv interface{},
@@ -22,56 +19,53 @@ func StreamInterceptor(srv interface{},
     info *grpc.StreamServerInfo,
     handler grpc.StreamHandler) error {
     
-    // 1. Pre-stream operations
-    // - Extract metadata
-    // - Validate protocol requirements
-    // - Initialize stream state
+    // 1. 流开始前的预处理
+    // - 提取元数据
+    // - 校验协议要求
+    // - 初始化流状态
     
-    // 2. Wrap the stream for monitoring
+    // 2. 包装流以便监控
     wrappedStream := &wrappedServerStream{
         ServerStream: ss,
-        // Add fields for tracking stream state
+        // 添加用于跟踪流状态的字段
     }
     
-    // 3. Handle the stream
+    // 3. 处理流
     err := handler(srv, wrappedStream)
     
-    // 4. Post-stream operations
-    // - Record metrics
-    // - Clean up resources
-    // - Handle errors
+    // 4. 流结束后的后处理
+    // - 记录指标
+    // - 清理资源
+    // - 处理错误
     
     return err
 }
 ```
 
-This structure allows you to:
-- Set up stream-wide context and state
-- Monitor message flow
-- Handle stream lifecycle events
-- Manage stream-specific resources
+该结构可以帮助你：
+- 建立作用于整个流的上下文与状态
+- 监控消息流动
+- 处理流的生命周期事件
+- 管理流特定的资源
 
-## Stream Wrapper
+## 流包装器
 
-The gRPC server stream interface provides basic message handling capabilities, but
-interceptors often need to add functionality without modifying the original stream.
-This is where stream wrappers become essential. A stream wrapper implements the
-`grpc.ServerStream` interface while adding custom behavior through composition.
+gRPC 服务端流接口提供了基本的消息处理能力，但拦截器通常需要在不修改原始流的情况下增加功能。这时“流包装器”就很关键了。流包装器通过组合实现 `grpc.ServerStream` 接口，同时添加自定义行为。
 
-Here's a standard implementation pattern:
+下面是一个标准的实现模式：
 
 ```go
 type wrappedServerStream struct {
-    grpc.ServerStream                // Embed the original interface
-    msgCount   int64                 // Track message count
-    startTime  time.Time             // Track stream duration
-    method     string                // Store RPC method name
+    grpc.ServerStream                // 嵌入原始接口
+    msgCount   int64                 // 跟踪消息计数
+    startTime  time.Time             // 跟踪流持续时间
+    method     string                // 存储 RPC 方法名
 }
 
 func (w *wrappedServerStream) SendMsg(m interface{}) error {
     err := w.ServerStream.SendMsg(m)
     if err == nil {
-        atomic.AddInt64(&w.msgCount, 1)  // Thread-safe counter
+        atomic.AddInt64(&w.msgCount, 1)  // 线程安全的计数器
     }
     return err
 }
@@ -79,47 +73,45 @@ func (w *wrappedServerStream) SendMsg(m interface{}) error {
 func (w *wrappedServerStream) RecvMsg(m interface{}) error {
     err := w.ServerStream.RecvMsg(m)
     if err == nil {
-        atomic.AddInt64(&w.msgCount, 1)  // Track received messages too
+        atomic.AddInt64(&w.msgCount, 1)  // 也跟踪接收的消息
     }
     return err
 }
 ```
 
-This wrapper pattern serves several important purposes:
+该包装器模式具有以下重要作用：
 
-1. **Message Tracking**: The wrapper intercepts every message sent or received,
-   allowing you to:
-   - Count total messages processed
-   - Implement rate limiting
-   - Log message sizes or contents
-   - Apply transformations
+1. **消息跟踪**：包装器拦截每一条发送或接收的消息，使你可以：
+   - 统计处理的消息总数
+   - 实现限流
+   - 记录消息大小或内容
+   - 进行转换
 
-2. **State Management**: The wrapper maintains stream-specific state:
-   - Track timing information
-   - Store stream metadata
-   - Manage resource usage
-   - Coordinate multiple goroutines
+2. **状态管理**：包装器维护流特定的状态：
+   - 跟踪时间信息
+   - 存储流元数据
+   - 管理资源使用
+   - 协调多个 goroutine
 
-3. **Error Handling**: The wrapper can enhance error handling by:
-   - Adding context to errors
-   - Implementing retry logic
-   - Recording error metrics
-   - Cleaning up resources
+3. **错误处理**：包装器可增强错误处理：
+   - 为错误添加上下文
+   - 实现重试逻辑
+   - 记录错误指标
+   - 清理资源
 
-Here's an example of a more sophisticated wrapper that adds functionality
-commonly needed in production environments:
+下面是一个更复杂的包装器示例，加入了生产环境常见的功能：
 
 ```go
 type enhancedServerStream struct {
     grpc.ServerStream
-    ctx       context.Context    // Enhanced context
-    method    string            // RPC method name
-    startTime time.Time         // Stream start time
-    msgCount  int64            // Message counter
-    msgSize   int64            // Total bytes processed
-    metadata  metadata.MD       // Cached metadata
-    mu        sync.RWMutex      // Protect concurrent access
-    logger    *zap.Logger       // Structured logging
+    ctx       context.Context    // 增强的上下文
+    method    string            // RPC 方法名
+    startTime time.Time         // 流开始时间
+    msgCount  int64            // 消息计数器
+    msgSize   int64            // 处理的总字节数
+    metadata  metadata.MD       // 缓存的元数据
+    mu        sync.RWMutex      // 并发访问保护
+    logger    *zap.Logger       // 结构化日志
 }
 
 func newEnhancedServerStream(ss grpc.ServerStream, method string) *enhancedServerStream {
@@ -138,25 +130,25 @@ func (s *enhancedServerStream) Context() context.Context {
 }
 
 func (s *enhancedServerStream) SendMsg(m interface{}) error {
-    // Pre-send processing
+    // 发送前处理
     msgSize := proto.Size(m.(proto.Message))
     
     s.mu.Lock()
     s.msgSize += int64(msgSize)
     s.mu.Unlock()
     
-    // Log large messages
+    // 对大消息进行日志告警
     if msgSize > maxMessageSize {
         s.logger.Warn("large message detected",
             zap.Int("size", msgSize))
     }
     
-    // Send with timing
+    // 计时发送
     start := time.Now()
     err := s.ServerStream.SendMsg(m)
     duration := time.Since(start)
     
-    // Post-send processing
+    // 发送后处理
     if err == nil {
         atomic.AddInt64(&s.msgCount, 1)
         metrics.RecordMessageMetrics(s.method, "send",
@@ -170,7 +162,7 @@ func (s *enhancedServerStream) SendMsg(m interface{}) error {
 }
 
 func (s *enhancedServerStream) RecvMsg(m interface{}) error {
-    // Similar enhancement pattern for receive...
+    // 接收方向采用相同增强模式...
 }
 
 func (s *enhancedServerStream) Stats() StreamStats {
@@ -186,33 +178,33 @@ func (s *enhancedServerStream) Stats() StreamStats {
 }
 ```
 
-This enhanced wrapper demonstrates several production-ready features:
+该增强包装器展示了多项生产级特性：
 
-1. **Metrics Collection**: The wrapper automatically records:
-   - Message counts and sizes
-   - Processing durations
-   - Error rates
-   - Custom business metrics
+1. **指标采集**：自动记录：
+   - 消息数量与大小
+   - 处理时长
+   - 错误率
+   - 自定义业务指标
 
-2. **Logging Integration**: It provides structured logging with:
-   - Method-level context
-   - Size warnings
-   - Error details
-   - Timing information
+2. **日志集成**：提供结构化日志：
+   - 方法级上下文
+   - 大小告警
+   - 错误详情
+   - 时间信息
 
-3. **Resource Tracking**: The wrapper maintains:
-   - Total bytes processed
-   - Stream duration
-   - Message statistics
-   - Resource usage patterns
+3. **资源跟踪**：维护：
+   - 处理的总字节数
+   - 流持续时间
+   - 消息统计
+   - 资源使用模式
 
-4. **Thread Safety**: It properly handles concurrent access through:
-   - Atomic operations for counters
-   - Mutex protection for shared state
-   - Safe context management
-   - Thread-safe logging
+4. **并发安全**：通过以下方式正确处理并发访问：
+   - 对计数器使用原子操作
+   - 用互斥锁保护共享状态
+   - 安全地管理上下文
+   - 线程安全的日志
 
-You can use these wrappers in your interceptors like this:
+你可以在拦截器中这样使用这些包装器：
 
 ```go
 func StreamInterceptor(srv interface{},
@@ -220,13 +212,13 @@ func StreamInterceptor(srv interface{},
     info *grpc.StreamServerInfo,
     handler grpc.StreamHandler) error {
     
-    // Create enhanced stream
+    // 创建增强流
     ws := newEnhancedServerStream(ss, info.FullMethod)
     
-    // Use wrapper in handler
+    // 在处理器中使用包装器
     err := handler(srv, ws)
     
-    // Record final statistics
+    // 记录最终统计
     stats := ws.Stats()
     metrics.RecordStreamStats(stats)
     
@@ -234,16 +226,13 @@ func StreamInterceptor(srv interface{},
 }
 ```
 
-These wrapper patterns are standard practice in gRPC services, and you'll find
-similar implementations in many production systems. The specific enhancements you
-add will depend on your service's requirements, but the basic pattern of wrapping
-the stream to add functionality remains consistent.
+这些包装器模式是 gRPC 服务中的常见做法，你会在许多生产系统中看到相似实现。具体增强取决于你的服务需求，但“通过包装流添加功能”的基本模式保持一致。
 
-## Common Patterns
+## 常见模式
 
-### 1. Stream Monitoring
+### 1. 流监控
 
-Monitor streaming RPC performance and behavior:
+监控流式 RPC 的性能与行为：
 
 ```go
 func MonitoringStreamInterceptor(srv interface{},
@@ -251,20 +240,20 @@ func MonitoringStreamInterceptor(srv interface{},
     info *grpc.StreamServerInfo,
     handler grpc.StreamHandler) error {
     
-    // Create wrapped stream
+    // 创建包装流
     ws := &wrappedServerStream{
         ServerStream: ss,
         startTime:    time.Now(),
         method:       info.FullMethod,
     }
     
-    // Extract peer information
+    // 提取对端信息
     peer, _ := peer.FromContext(ss.Context())
     
-    // Handle stream
+    // 处理流
     err := handler(srv, ws)
     
-    // Record metrics
+    // 记录指标
     duration := time.Since(ws.startTime)
     msgCount := atomic.LoadInt64(&ws.msgCount)
     status := status.Code(err)
@@ -276,17 +265,11 @@ func MonitoringStreamInterceptor(srv interface{},
 }
 ```
 
-This pattern demonstrates comprehensive stream monitoring capabilities. The interceptor
-tracks the duration of each stream from start to finish, maintaining an accurate
-count of messages processed. It extracts and records peer information from the
-context, enabling you to identify and monitor client behavior. The interceptor
-properly handles stream errors, ensuring that failure scenarios are captured and
-recorded. All of this information is collected into stream-specific metrics,
-providing valuable insights into your service's streaming behavior.
+该模式展示了全面的流监控能力。拦截器从流开始到结束跟踪持续时间，准确维护处理的消息计数。它从上下文中提取并记录对端信息，便于识别与监控客户端行为。拦截器正确处理流错误，确保故障场景被捕获和记录。所有信息都会汇总成流特定的指标，为服务的流式行为提供有价值的洞察。
 
-### 2. Resource Management
+### 2. 资源管理
 
-Manage resources for long-lived streams:
+为长寿命流管理资源：
 
 ```go
 func ResourceManagementInterceptor(srv interface{},
@@ -294,21 +277,21 @@ func ResourceManagementInterceptor(srv interface{},
     info *grpc.StreamServerInfo,
     handler grpc.StreamHandler) error {
     
-    // Create resource pool
+    // 创建资源池
     pool := acquireResourcePool()
     defer releaseResourcePool(pool)
     
-    // Create stream context with cancel
+    // 创建带取消的流上下文
     ctx, cancel := context.WithCancel(ss.Context())
     defer cancel()
     
-    // Create wrapped stream with resource context
+    // 创建带资源上下文的包装流
     ws := &wrappedServerStream{
         ServerStream: wrapStreamContext(ss, ctx),
         resources:    pool,
     }
     
-    // Monitor resource usage
+    // 监控资源使用
     go func() {
         ticker := time.NewTicker(time.Second)
         defer ticker.Stop()
@@ -319,7 +302,7 @@ func ResourceManagementInterceptor(srv interface{},
                 return
             case <-ticker.C:
                 if pool.Usage() > maxUsage {
-                    cancel() // Terminate stream if resources exceeded
+                    cancel() // 当资源超限时终止流
                     return
                 }
             }
@@ -330,18 +313,11 @@ func ResourceManagementInterceptor(srv interface{},
 }
 ```
 
-This example showcases essential resource management techniques for streaming RPCs.
-The interceptor creates and manages a dedicated resource pool for each stream,
-ensuring proper allocation and cleanup of resources. It implements active monitoring
-of resource usage through a background goroutine, which periodically checks
-consumption levels. When resource limits are exceeded, the interceptor gracefully
-terminates the stream using context cancellation. Throughout the stream's
-lifecycle, it maintains proper cleanup through strategic use of defer statements,
-guaranteeing that resources are released even in error scenarios.
+该示例展示了流式 RPC 的关键资源管理技巧。拦截器为每个流创建并管理专用资源池，确保资源正确分配与清理。通过后台 goroutine 主动监控资源使用，定期检查消耗水平；当资源超限时，通过上下文取消优雅地终止流。在整个生命周期中，利用 defer 实现策略性清理，即便出现错误也能保证资源释放。
 
-### 3. Flow Control
+### 3. 流量控制
 
-Implement flow control for streaming RPCs:
+为流式 RPC 实现流量控制：
 
 ```go
 func FlowControlInterceptor(maxMsgsPerSecond int) grpc.StreamServerInterceptor {
@@ -373,23 +349,14 @@ func FlowControlInterceptor(maxMsgsPerSecond int) grpc.StreamServerInterceptor {
 }
 ```
 
-This pattern illustrates sophisticated flow control for streaming RPCs. The
-interceptor employs a token bucket algorithm to enforce rate limits on message
-flow, preventing resource exhaustion from high-volume streams. It carefully
-respects context cancellation, ensuring that rate limiting doesn't block
-indefinitely when streams are terminated. The implementation handles both send and
-receive operations uniformly, providing consistent flow control in both directions.
-This approach allows for fine-grained control over message processing rates while
-maintaining responsiveness to cancellation and shutdown signals.
+该模式展示了对流式 RPC 的精细流控。拦截器采用令牌桶算法对消息流实施速率限制，防止高并发流导致资源耗尽。它严格尊重上下文取消，确保在流被终止时限流不会无限阻塞。实现同时覆盖发送与接收操作，在双向上提供一致的流控。此方法允许对消息处理速率进行细粒度控制，同时保持对取消与关闭信号的响应性。
 
-## Testing
+## 测试
 
-Testing streaming interceptors requires careful consideration of stream lifecycle,
-message flow, and state management. Here's how to use Clue's mock package to test
-stream interceptors effectively:
+测试流式拦截器需要谨慎考虑流生命周期、消息流与状态管理。以下展示如何使用 Clue 的 mock 包有效地测试流式拦截器：
 
 ```go
-// Mock implementation of grpc.ServerStream
+// grpc.ServerStream 的模拟实现
 type mockServerStream struct {
     *mock.Mock
     t *testing.T
@@ -430,12 +397,12 @@ func TestMonitoringStreamInterceptor(t *testing.T) {
         {
             name: "successful stream with multiple messages",
             setup: func(s *mockServerStream) {
-                // Set up context call
+                // 设置 Context 调用
                 s.Set("Context", func() context.Context {
                     return context.Background()
                 })
                 
-                // Set up successful message sends
+                // 设置成功的消息发送序列
                 for i := 0; i < 10; i++ {
                     s.Add("SendMsg", func(msg interface{}) error {
                         return nil
@@ -452,14 +419,14 @@ func TestMonitoringStreamInterceptor(t *testing.T) {
                     return context.Background()
                 })
                 
-                // First few messages succeed
+                // 前几条消息成功
                 for i := 0; i < 3; i++ {
                     s.Add("SendMsg", func(msg interface{}) error {
                         return nil
                     })
                 }
                 
-                // Then error occurs
+                // 然后出现错误
                 s.Add("SendMsg", func(msg interface{}) error {
                     return status.Error(codes.Internal, "stream error")
                 })
@@ -471,13 +438,13 @@ func TestMonitoringStreamInterceptor(t *testing.T) {
     
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Create mock stream
+            // 创建模拟流
             stream := newMockServerStream(t)
             if tt.setup != nil {
                 tt.setup(stream)
             }
             
-            // Create test handler
+            // 创建测试处理器
             handler := func(srv interface{}, stream grpc.ServerStream) error {
                 for i := 0; i < tt.msgCount; i++ {
                     if err := stream.SendMsg(i); err != nil {
@@ -487,17 +454,17 @@ func TestMonitoringStreamInterceptor(t *testing.T) {
                 return nil
             }
             
-            // Call interceptor
+            // 调用拦截器
             err := MonitoringStreamInterceptor(nil, stream,
                 &grpc.StreamServerInfo{}, handler)
             
-            // Verify error behavior
+            // 验证错误行为
             if (err != nil) != tt.wantErr {
                 t.Errorf("MonitoringStreamInterceptor() error = %v, wantErr %v",
                     err, tt.wantErr)
             }
             
-            // Verify all expected calls were made
+            // 验证所有期望的调用是否已执行
             if stream.HasMore() {
                 t.Error("not all expected stream operations were performed")
             }
@@ -505,7 +472,7 @@ func TestMonitoringStreamInterceptor(t *testing.T) {
     }
 }
 
-// Testing resource management with Clue mocks
+// 使用 Clue mocks 测试资源管理
 func TestResourceManagementInterceptor(t *testing.T) {
     tests := []struct {
         name      string
@@ -520,7 +487,7 @@ func TestResourceManagementInterceptor(t *testing.T) {
                     return context.Background()
                 })
                 
-                // Simulate message processing until resource limit
+                // 模拟处理消息直到资源达到上限
                 s.Add("SendMsg", func(msg interface{}) error {
                     return nil
                 })
@@ -550,7 +517,7 @@ func TestResourceManagementInterceptor(t *testing.T) {
     }
 }
 
-// Testing flow control with Clue mocks
+// 使用 Clue mocks 测试流控
 func TestFlowControlInterceptor(t *testing.T) {
     tests := []struct {
         name     string
@@ -565,7 +532,7 @@ func TestFlowControlInterceptor(t *testing.T) {
                     return context.Background()
                 })
                 
-                // Set up sequence of messages with timing checks
+                // 设置带时间检测的消息序列
                 start := time.Now()
                 for i := 0; i < 3; i++ {
                     s.Add("SendMsg", func(msg interface{}) error {
@@ -576,57 +543,48 @@ func TestFlowControlInterceptor(t *testing.T) {
                     })
                 }
             },
-            rate:    2, // messages per second
+            rate:    2, // 每秒消息数
             wantErr: false,
         },
     }
     
-    // Test implementation...
+    // 测试实现...
 }
 ```
 
-This testing approach using Clue's mock package offers several advantages:
+使用 Clue 的 mock 包进行此类测试有以下优势：
 
-1. **Sequence Control**: The `Add` method allows precise control over the sequence
-   of stream operations, making it easy to test different message patterns and
-   error scenarios.
+1. **序列控制**：`Add` 方法可精确控制流操作的顺序，便于测试不同的消息模式与错误场景。
 
-2. **Permanent Behaviors**: The `Set` method defines default behaviors for stream
-   operations that don't need to vary, reducing test setup code.
+2. **永久行为**：`Set` 方法为不需变化的流操作定义默认行为，减少测试样板代码。
 
-3. **Verification**: The `HasMore` method provides a simple way to verify that all
-   expected operations were performed, catching missing or unexpected calls.
+3. **校验**：`HasMore` 方法提供简便的校验方式，确保所有预期操作均已执行，避免遗漏或意外调用。
 
-4. **Flexibility**: The mock implementation can be easily extended to handle new
-   stream behaviors or test different aspects of interceptor functionality.
+4. **灵活性**：模拟实现可轻松扩展以处理新的流行为或测试拦截器功能的不同方面。
 
-The tests demonstrate several key patterns:
+上述测试展示了若干关键模式：
 
-1. **Setup Functions**: Each test case includes a setup function that configures
-   the mock stream's behavior, making the test cases clear and self-contained.
+1. **设置函数**：每个测试用例包含设置函数来配置模拟流行为，使用例清晰且自洽。
 
-2. **Error Scenarios**: The tests cover both successful operations and various
-   error conditions, ensuring robust error handling.
+2. **错误场景**：测试覆盖成功与多种错误条件，确保健壮的错误处理。
 
-3. **Resource Management**: Tests verify proper resource allocation, usage
-   tracking, and cleanup.
+3. **资源管理**：验证资源分配、使用跟踪与清理是否正确。
 
-4. **Flow Control**: Tests validate rate limiting and backpressure mechanisms
-   using timing-aware mock implementations.
+4. **流控**：使用具备时间感知的模拟实现来验证限流与背压机制。
 
-## Best Practices
+## 最佳实践
 
-1. **Resource Management**: Always clean up resources, even on errors.
-2. **Context Handling**: Respect context cancellation for stream operations.
-3. **Flow Control**: Implement rate limiting for high-volume streams.
-4. **Error Handling**: Use appropriate gRPC status codes for stream errors.
-5. **Testing**: Test stream lifecycle events and error conditions.
-6. **Monitoring**: Track stream health and performance metrics.
-7. **Documentation**: Document stream behavior and resource requirements.
+1. **资源管理**：即使出现错误也要清理资源。
+2. **上下文处理**：尊重流操作中的上下文取消。
+3. **流量控制**：为高流量流实现速率限制。
+4. **错误处理**：为流错误使用合适的 gRPC 状态码。
+5. **测试**：测试流生命周期事件与错误条件。
+6. **监控**：跟踪流健康与性能指标。
+7. **文档**：记录流行为与资源需求。
 
-## Next Steps
+## 下一步
 
-- Review [Error Handling](@/docs/4-concepts/4-error-handling.md)
-- Explore [Observability](@/docs/5-real-world/2-observability.md)
-- Learn about [Load Balancing](@/docs/5-real-world/4-load-balancing.md)
+- 回顾[错误处理](@/docs/4-concepts/4-error-handling.md)
+- 探索[可观测性](@/docs/5-real-world/2-observability.md)
+- 了解[负载均衡](@/docs/5-real-world/4-load-balancing.md)
 

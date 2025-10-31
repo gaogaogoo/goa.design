@@ -1,22 +1,21 @@
 ---
-title: Running the Concerts Service
+title: 运行 Concerts 服务
 linkTitle: Running
 weight: 3
-description: "Learn how to run your Goa-based Concerts service, test the REST endpoints using HTTP requests, and explore the auto-generated OpenAPI documentation."
+description: "学习如何运行基于 Goa 的 Concerts 服务，使用 HTTP 请求测试 REST 端点，并查看自动生成的 OpenAPI 文档。"
 ---
 
-You've designed your API and implemented the service methods. Now it's time to
-run the Concerts service and test its endpoints.
+你已经完成了 API 设计并实现了服务方法。现在是时候运行 Concerts 服务并测试其端点了。
 
-## 1. Start the Server
+## 1. 启动服务器
 
-From your project root, build and run your app:
+在项目根目录构建并运行应用：
 
 ```bash
 go run cmd/concerts/main.go
 ```
 
-The service listens on port 8080 by default (unless modified in `main.go`). You should see output like:
+服务默认监听 8080 端口（除非在 `main.go` 中修改）。你会看到类似输出：
 
 ```
 "List" mounted on GET /concerts
@@ -27,33 +26,28 @@ The service listens on port 8080 by default (unless modified in `main.go`). You 
 Starting concerts service on :8080
 ```
 
-## 2. Test the Endpoints
+## 2. 测试端点
 
-Let's explore your shiny new API! You can interact with your service using popular HTTP tools:
+让我们探索你的新 API！你可以使用常见的 HTTP 工具与服务交互：
 
-- `curl` for quick command-line testing
-- [HTTPie](https://httpie.org) for a more user-friendly CLI experience
-- [Postman](https://www.postman.com/) for a powerful GUI interface with request history and collections
+- `curl`：命令行快速测试
+- [HTTPie](https://httpie.org)：更友好的 CLI 体验
+- [Postman](https://www.postman.com/)：强大的 GUI，支持请求历史与集合
 
-Pick your favorite tool and let's start making some requests! 🚀
-We'll use `curl` for these examples since it's universally available on most
-systems. However, feel free to adapt the examples to your preferred HTTP client,
-the concepts remain the same regardless of the tool you use.
+以下示例使用 `curl`，因为其在多数系统上都可用。你也可以使用自己喜欢的 HTTP 客户端，概念相同。
 
-Here's what we'll test:
-- Creating a new concert (`POST`)
-- Listing all concerts with pagination (`GET`)
-- Retrieving a specific concert (`GET`)
-- Updating concert details (`PUT`)
-- Deleting a concert (`DELETE`)
+我们将测试以下内容：
+- 创建演唱会（`POST`）
+- 通过分页列出所有演唱会（`GET`）
+- 获取指定演唱会（`GET`）
+- 更新演唱会详情（`PUT`）
+- 删除演唱会（`DELETE`）
 
-### Create a Concert
+### 创建演唱会
 
-Let's create a new concert! This request sends a POST with the concert details
-in JSON format. The server will generate a unique ID and return the complete
-concert object.
+创建新演唱会。该请求以 JSON 格式发送演唱会详情，服务器会生成唯一 ID 并返回完整对象。
 
-Note that prices are stored in cents (e.g., 8500 = $85.00):
+价格以美分存储（例如 8500 = $85.00）：
 
 ```bash
 curl -X POST http://localhost:8080/concerts \
@@ -66,7 +60,7 @@ curl -X POST http://localhost:8080/concerts \
   }'
 ```
 
-Let's create another one to illustrate pagination:
+再创建一条以演示分页：
 
 ```bash
 curl -X POST http://localhost:8080/concerts \
@@ -79,44 +73,34 @@ curl -X POST http://localhost:8080/concerts \
   }'
 ```
 
-### List Concerts
+### 列出演唱会
 
-Get all concerts with optional pagination parameters:
+可选的分页参数：
+- `page`：页号（默认 1，最小 1）
+- `limit`：每页数量（默认 10，范围 1–100）
 
-- `page`: Page number (default: 1, minimum: 1)
-- `limit`: Results per page (default: 10, range: 1-100)
-
-The list endpoint supports pagination to help you manage large sets of concert data efficiently. You can control how many results you see per page and which page to view.
-
-Retrieve all concerts (uses default pagination):
+示例：
 
 ```bash
-curl http://localhost:8080/concerts
-```
+# 使用默认分页
+debug http://localhost:8080/concerts
 
-Get one result per page:
-
-```bash
+# 每页 1 条
 curl "http://localhost:8080/concerts?page=1&limit=1"
-```
 
-Get page 2 with 5 results:
-
-```bash
+# 第 2 页，每页 5 条
 curl "http://localhost:8080/concerts?page=2&limit=5"
 ```
 
-### Show a Concert
+### 查看指定演唱会
 
-When you need detailed information about a specific concert, use the show endpoint. This is useful for displaying individual concert details or verifying information after creation/updates.
-
-Replace `<concertID>` with an ID returned from create (e.g., `550e8400-e29b-41d4-a716-446655440000`):
+将 `<concertID>` 替换为创建时返回的 ID（例如 `550e8400-e29b-41d4-a716-446655440000`）：
 
 ```bash
 curl http://localhost:8080/concerts/<concertID>
 ```
 
-Example response:
+示例响应：
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -127,11 +111,9 @@ Example response:
 }
 ```
 
-### Update a Concert
+### 更新演唱会
 
-Need to change concert details? The update endpoint lets you modify existing concert information. You only need to include the fields you want to update - other fields will retain their current values.
-
-Update multiple fields:
+可修改多个字段：
 
 ```bash
 curl -X PUT http://localhost:8080/concerts/<concertID> \
@@ -144,7 +126,7 @@ curl -X PUT http://localhost:8080/concerts/<concertID> \
   }'
 ```
 
-Update just the price:
+仅更新价格：
 
 ```bash
 curl -X PUT http://localhost:8080/concerts/<concertID> \
@@ -154,26 +136,24 @@ curl -X PUT http://localhost:8080/concerts/<concertID> \
   }'
 ```
 
-### Delete a Concert
-
-If a concert needs to be removed from the system (perhaps it was cancelled or entered by mistake), use the delete endpoint. This operation is permanent, so use it with care!
+### 删除演唱会
 
 ```bash
 curl -X DELETE http://localhost:8080/concerts/<concertID>
 ```
 
-## 3. Error Handling
+## 3. 错误处理
 
-The API returns consistent error responses with appropriate HTTP status codes:
+API 会返回一致的错误响应与合适的 HTTP 状态码：
 
-### Not Found (404)
-When requesting a concert that doesn't exist:
+### Not Found（404）
+请求不存在的演唱会：
 
 ```bash
 curl http://localhost:8080/concerts/invalid-id
 ```
 
-Response:
+响应：
 ```json
 {
   "message": "Concert with ID invalid-id not found",
@@ -181,8 +161,8 @@ Response:
 }
 ```
 
-### Bad Request (400)
-When creating a concert with invalid data:
+### Bad Request（400）
+创建演唱会时提供无效数据：
 
 ```bash
 curl -X POST http://localhost:8080/concerts \
@@ -195,44 +175,39 @@ curl -X POST http://localhost:8080/concerts \
   }'
 ```
 
-The API will return validation errors for:
-- Empty artist names (must be 1-200 characters)
-- Invalid date formats (must be YYYY-MM-DD)
-- Empty venue names (must be 1-300 characters)
-- Negative prices (must be ≥ 0 and ≤ 100000 cents)
+API 将返回以下校验错误：
+- 艺术家名称为空（必须 1–200 字符）
+- 日期格式无效（必须为 YYYY‑MM‑DD）
+- 场地名称为空（必须 1–300 字符）
+- 票价为负（必须 ≥ 0 且 ≤ 100000 美分）
 
-## 4. Access API Documentation
+## 4. 访问 API 文档
 
-Goa automatically generates OpenAPI documentation for your API. Once your service is running, you can access the specifications directly:
+Goa 自动为你的 API 生成 OpenAPI 文档。服务运行后，你可以直接访问规范：
 
-### OpenAPI Specifications
+### OpenAPI 3.0
 
-- **OpenAPI 3.0 JSON**: `http://localhost:8080/openapi3.json`
-- **OpenAPI 3.0 YAML**: `http://localhost:8080/openapi3.yaml`
+- JSON：`http://localhost:8080/openapi3.json`
+- YAML：`http://localhost:8080/openapi3.yaml`
 
-### Using Swagger UI
+### 使用 Swagger UI
 
-{{< alert title="Quick Setup" color="primary" >}}
-1. **Prerequisites**
-   - Docker installed on your system
-
-2. **Start Swagger UI**
+{{< alert title="快速设置" color="primary" >}}
+1. 前提条件：已安装 Docker
+2. 启动 Swagger UI：
    ```bash
    docker run -p 8081:8080 swaggerapi/swagger-ui
    ```
-
-3. **View Documentation**
-   - Open `http://localhost:8081` in your browser
-   - Enter `http://localhost:8080/openapi3.yaml` in the Swagger UI
+3. 浏览文档：
+   - 打开 `http://localhost:8081`
+   - 在 Swagger UI 中输入 `http://localhost:8080/openapi3.yaml`
 {{< /alert >}}
 
-### Alternative Documentation Tools
+### 其他文档工具
+- Redoc：另一款流行的 OpenAPI 文档查看器
+- OpenAPI Generator：生成多语言客户端库
+- Speakeasy：生成更佳开发者体验的 SDK
 
-- **Redoc**: Another popular OpenAPI documentation viewer
-- **OpenAPI Generator**: Generate client libraries in various languages
-- **Speakeasy**: Generate SDKs with enhanced developer experience
+## 下一步
 
-## Next Steps
-
-Now that you've explored the basic API operations, learn more about how Goa handles [HTTP encoding and decoding](../4-encoding) to understand how requests and responses are processed.
-
+现在你已经探索了基本的 API 操作，前往了解 Goa 如何处理 [HTTP 编解码](../4-encoding) 以理解请求与响应的处理方式。

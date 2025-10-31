@@ -1,16 +1,16 @@
 ---
-title: Combining Middleware and Interceptors
+title: 结合中间件与拦截器
 weight: 1
 description: >
-  Learn powerful patterns for combining HTTP middleware with Goa interceptors to create robust and maintainable services.
+  学习将 HTTP 中间件与 Goa 拦截器结合的强大模式，构建健壮且可维护的服务。
 ---
 
-HTTP middleware and Goa interceptors can work together to create powerful, layered solutions. This guide explores patterns and strategies for combining them effectively.
+HTTP 中间件与 Goa 拦截器可以协同工作，形成强大的分层解决方案。本文探讨如何有效组合它们的模式与策略。
 
-## Core Concepts
+## 核心概念
 
-### Data Flow
-The typical flow of data through middleware and interceptors:
+### 数据流
+中间件与拦截器中的典型数据流：
 
 ```
 HTTP Request → HTTP Middleware → Goa Transport → Goa Interceptors → Service Method
@@ -18,31 +18,31 @@ HTTP Request → HTTP Middleware → Goa Transport → Goa Interceptors → Serv
                             Response Flow
 ```
 
-### Shared Context
-The `context.Context` is the primary mechanism for sharing data:
+### 共享上下文
+`context.Context` 是共享数据的主要机制：
 
 ```go
-// HTTP middleware adds data
+// HTTP 中间件添加数据
 func EnrichContext(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Add HTTP-specific data
+        // 添加 HTTP 相关数据
         ctx := r.Context()
         ctx = context.WithValue(ctx, "http.start_time", time.Now())
         ctx = context.WithValue(ctx, "http.method", r.Method)
         ctx = context.WithValue(ctx, "http.path", r.URL.Path)
         
-        // Continue with enriched context
+        // 使用增强的上下文继续处理
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }
 
-// Goa interceptor uses the data
+// Goa 拦截器使用这些数据
 var _ = Service("api", func() {
     Interceptor("RequestLogger", func() {
-        Description("Logs request details with HTTP context")
+        Description("结合 HTTP 上下文记录请求细节")
         
         Request(func() {
-            // Access HTTP context in implementation
+            // 在实现中访问 HTTP 上下文
             Attribute("method")
             Attribute("path")
             Attribute("duration")
@@ -50,17 +50,17 @@ var _ = Service("api", func() {
     })
 })
 
-// Implementation uses both
+// 实现同时使用两者
 func (i *Interceptors) RequestLogger(ctx context.Context, info *RequestLoggerInfo, next goa.Endpoint) (any, error) {
-    // Access HTTP data from context
+    // 从上下文访问 HTTP 数据
     startTime := ctx.Value("http.start_time").(time.Time)
     method := ctx.Value("http.method").(string)
     path := ctx.Value("http.path").(string)
     
-    // Call service
+    // 调用服务
     res, err := next(ctx, info.RawPayload())
     
-    // Log with combined data
+    // 结合数据记录日志
     duration := time.Since(startTime)
     log.Printf("HTTP %s %s completed in %v", method, path, duration)
     
@@ -68,38 +68,38 @@ func (i *Interceptors) RequestLogger(ctx context.Context, info *RequestLoggerInf
 }
 ```
 
-## Common Patterns
+## 常见模式
 
-### 1. Authentication Chain
+### 1. 认证链（Authentication Chain）
 
-Combine HTTP authentication with business authorization:
+将 HTTP 认证与业务授权相结合：
 
 ```go
-// HTTP middleware handles JWT validation
+// HTTP 中间件进行 JWT 验证
 func JWTAuth(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         token := r.Header.Get("Authorization")
         
-        // Validate JWT
+        // 验证 JWT
         claims, err := validateJWT(token)
         if err != nil {
             http.Error(w, "Invalid token", http.StatusUnauthorized)
             return
         }
         
-        // Add claims to context
+        // 将 claims 放入上下文
         ctx := context.WithValue(r.Context(), "jwt.claims", claims)
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }
 
-// Goa interceptor handles authorization
+// Goa 拦截器进行授权
 var _ = Service("api", func() {
     Interceptor("Authorizer", func() {
-        Description("Checks permissions using JWT claims")
+        Description("使用 JWT claims 检查权限")
         
         Request(func() {
-            // Access claims in implementation
+            // 在实现中访问 claims
             Attribute("claims")
             Attribute("resource")
             Attribute("action")
@@ -107,12 +107,12 @@ var _ = Service("api", func() {
     })
 })
 
-// Implementation combines both
+// 实现将两者结合
 func (i *Interceptors) Authorizer(ctx context.Context, info *AuthorizerInfo, next goa.Endpoint) (any, error) {
-    // Get claims from HTTP context
+    // 从 HTTP 上下文获取 claims
     claims := ctx.Value("jwt.claims").(JWTClaims)
     
-    // Check permissions
+    // 检查权限
     if !hasPermission(claims, info.Resource(), info.Action()) {
         return nil, goa.NewErrorf(goa.ErrForbidden, "insufficient permissions")
     }
@@ -121,23 +121,23 @@ func (i *Interceptors) Authorizer(ctx context.Context, info *AuthorizerInfo, nex
 }
 ```
 
-### 2. Observability Stack
+### 2. 可观测性栈（Observability Stack）
 
-Build comprehensive observability by combining HTTP and business metrics:
+通过组合 HTTP 与业务指标构建全面的可观测性：
 
 ```go
-// HTTP middleware captures request metrics
+// HTTP 中间件采集请求指标
 func HTTPMetrics(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         start := time.Now()
         
-        // Create recording response writer
+        // 创建记录型 ResponseWriter
         rec := newRecordingResponseWriter(w)
         
-        // Process request
+        // 处理请求
         next.ServeHTTP(rec, r)
         
-        // Record HTTP metrics
+        // 记录 HTTP 指标
         duration := time.Since(start)
         metrics.RecordHTTPMetrics(
             r.Method,
@@ -149,10 +149,10 @@ func HTTPMetrics(next http.Handler) http.Handler {
     })
 }
 
-// Goa interceptor adds business context
+// Goa 拦截器添加业务上下文
 var _ = Service("api", func() {
     Interceptor("BusinessMetrics", func() {
-        Description("Records business-level metrics")
+        Description("记录业务层指标")
         
         Request(func() {
             Attribute("operation")
@@ -164,14 +164,14 @@ var _ = Service("api", func() {
     })
 })
 
-// Implementation combines metrics
+// 实现组合指标
 func (i *Interceptors) BusinessMetrics(ctx context.Context, info *BusinessMetricsInfo, next goa.Endpoint) (any, error) {
     start := time.Now()
     
-    // Call service
+    // 调用服务
     res, err := next(ctx, info.RawPayload())
     
-    // Record business metrics
+    // 记录业务指标
     duration := time.Since(start)
     metrics.RecordBusinessMetrics(
         info.Operation(),
@@ -183,32 +183,32 @@ func (i *Interceptors) BusinessMetrics(ctx context.Context, info *BusinessMetric
 }
 ```
 
-### 3. Caching Strategy
+### 3. 缓存策略（Caching Strategy）
 
-Implement multi-level caching with HTTP and business logic:
+通过 HTTP 与业务逻辑实现多层缓存：
 
 ```go
-// HTTP middleware handles response caching
+// HTTP 中间件处理响应缓存
 func HTTPCache(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         key := generateCacheKey(r)
         
-        // Check HTTP cache
+        // 检查 HTTP 缓存
         if cached := httpCache.Get(key); cached != nil {
             writeFromCache(w, cached)
             return
         }
         
-        // Continue with flag in context
+        // 在上下文中添加标记后继续
         ctx := context.WithValue(r.Context(), "cache.key", key)
         next.ServeHTTP(w, r.WithContext(ctx))
     })
 }
 
-// Goa interceptor handles business caching
+// Goa 拦截器处理业务层缓存
 var _ = Service("api", func() {
     Interceptor("BusinessCache", func() {
-        Description("Implements business-level caching")
+        Description("实现业务层缓存")
         
         Request(func() {
             Attribute("cacheKey")
@@ -217,39 +217,39 @@ var _ = Service("api", func() {
     })
 })
 
-// Implementation combines caching strategies
+// 实现组合缓存策略
 func (i *Interceptors) BusinessCache(ctx context.Context, info *BusinessCacheInfo, next goa.Endpoint) (any, error) {
-    // Get cache key from HTTP context
+    // 从 HTTP 上下文获取缓存键
     httpKey := ctx.Value("cache.key").(string)
     
-    // Check business cache
+    // 检查业务缓存
     if cached := businessCache.Get(httpKey); cached != nil {
         return cached, nil
     }
     
-    // Call service
+    // 调用服务
     res, err := next(ctx, info.RawPayload())
     if err != nil {
         return nil, err
     }
     
-    // Cache result
+    // 缓存结果
     businessCache.Set(httpKey, res, info.CacheTTL())
     
     return res, nil
 }
 ```
 
-## Best Practices
+## 最佳实践
 
-### 1. Context Management
+### 1. 上下文管理
 
-- Use typed context keys
-- Document context dependencies
-- Handle missing context values gracefully
+- 使用类型化的上下文键
+- 文档化上下文依赖
+- 优雅处理缺失的上下文值
 
 ```go
-// Define typed context keys
+// 定义类型化上下文键
 type contextKey string
 
 const (
@@ -258,7 +258,7 @@ const (
     TraceIDKey     contextKey = "trace_id"
 )
 
-// Use typed keys in middleware
+// 在中间件中使用类型化键
 func WithRequestID(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         requestID := uuid.New().String()
@@ -267,34 +267,34 @@ func WithRequestID(next http.Handler) http.Handler {
     })
 }
 
-// Safe context access in interceptors
+// 在拦截器中安全访问上下文
 func (i *Interceptors) Logger(ctx context.Context, info *LoggerInfo, next goa.Endpoint) (any, error) {
     requestID, _ := ctx.Value(RequestIDKey).(string)
     if requestID == "" {
         requestID = "unknown"
     }
     
-    // Use requestID safely
+    // 安全使用 requestID
     return next(ctx, info.RawPayload())
 }
 ```
 
-### 2. Error Handling
+### 2. 错误处理
 
-- Define clear error boundaries
-- Maintain consistent error formats
-- Preserve error context
+- 定义清晰的错误边界
+- 保持一致的错误格式
+- 保留错误上下文
 
 ```go
-// HTTP middleware error handling
+// HTTP 中间件的错误边界
 func ErrorBoundary(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         defer func() {
             if err := recover(); err != nil {
-                // Log panic
+                // 记录 panic
                 log.Printf("panic: %v", err)
                 
-                // Return 500
+                // 返回 500
                 http.Error(w, "Internal Server Error", http.StatusInternalServerError)
             }
         }()
@@ -303,13 +303,13 @@ func ErrorBoundary(next http.Handler) http.Handler {
     })
 }
 
-// Goa error handling
+// Goa 的错误处理
 var _ = Service("api", func() {
     Error("not_found", ErrorResult)
     Error("invalid_input", ErrorResult)
     
     Interceptor("ErrorHandler", func() {
-        Description("Handles business errors")
+        Description("处理业务错误")
         
         Error("not_found")
         Error("invalid_input")
@@ -317,69 +317,69 @@ var _ = Service("api", func() {
 })
 ```
 
-### 3. Testing
+### 3. 测试
 
-Write tests that verify the integration:
+编写验证集成的测试：
 
 ```go
 func TestMiddlewareInterceptorIntegration(t *testing.T) {
-    // Create test service
+    // 创建测试服务
     svc := NewService()
     
-    // Create middleware chain
+    // 构建中间件链
     handler := JWTAuth(
         HTTPMetrics(
-            // ... other middleware
+            // ... 其他中间件
         ),
     )
     
-    // Create interceptor chain
+    // 构建拦截器链
     endpoints := NewEndpoints(svc)
     endpoints.Use(BusinessMetrics)
     
-    // Create test server
+    // 创建测试服务器
     server := httptest.NewServer(handler)
     defer server.Close()
     
-    // Test cases
+    // 测试用例
     tests := []struct {
         name           string
         token          string
         expectedStatus int
         expectedBody   string
     }{
-        // ... test cases
+        // ... 测试用例
     }
     
-    // Run tests
+    // 运行测试
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Make request
+            // 发起请求
             req, _ := http.NewRequest("GET", server.URL, nil)
             req.Header.Set("Authorization", tt.token)
             
-            // Verify response
+            // 验证响应
             resp, err := http.DefaultClient.Do(req)
             if err != nil {
                 t.Fatal(err)
             }
             
-            // Check status
+            // 检查状态码
             if resp.StatusCode != tt.expectedStatus {
                 t.Errorf("got status %d, want %d", resp.StatusCode, tt.expectedStatus)
             }
             
-            // Check metrics
-            // ... verify both HTTP and business metrics were recorded
+            // 检查指标
+            // ... 验证同时记录了 HTTP 与业务指标
         })
     }
 }
 ```
 
-## Next Steps
+## 下一步
 
-- Review [Custom Middleware](./custom) implementation details
-- Explore real-world examples in [Observability](@/docs/5-real-world/2-observability)
-- Learn about Goa's [Error Handling](@/docs/4-concepts/4-error-handling)
+- 查看[自定义中间件](./custom)的实现细节
+- 在[可观测性](@/docs/5-real-world/2-observability)中探索真实案例
+- 了解 Goa 的[错误处理](@/docs/4-concepts/4-error-handling)
 
-The effective combination of HTTP middleware and Goa interceptors allows you to build robust, maintainable services that handle both HTTP-specific concerns and business logic in a clean, organized way. 
+有效组合 HTTP 中间件与 Goa 拦截器，能让你以干净、有组织的方式同时处理 HTTP 协议关注点与业务逻辑，从而构建健壮且可维护的服务。

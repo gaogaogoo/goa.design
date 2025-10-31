@@ -1,51 +1,45 @@
 ---
-title: "Getting Started with Interceptors"
-description: "Learn how to create and use Goa interceptors"
+title: "拦截器入门"
+description: "学习如何创建与使用 Goa 拦截器"
 weight: 1
 ---
 
-This guide will walk you through creating and using your first Goa interceptor.
-We'll create a simple logging interceptor that records the timing of method
-calls.
+本文将带你创建并使用第一个 Goa 拦截器。我们将创建一个简单的日志拦截器，用于记录方法调用的耗时。
 
-## Defining an Interceptor
+## 定义拦截器
 
-Interceptors are defined in your design using the `Interceptor` function. Here's
-a simple logging interceptor:
+使用设计中的 `Interceptor` 函数定义拦截器。以下为一个简单的日志拦截器：
 
 ```go
 var RequestLogger = Interceptor("RequestLogger", func() {
-    Description("Logs incoming requests and their timing")
+    Description("记录入站请求及其耗时")
     
-    // We want to read the method status from the result
+    // 我们希望从结果中读取方法状态码
     ReadResult(func() {
-        Attribute("status", Int, "Returned status code") // Business logic status code - not HTTP
+        Attribute("status", Int, "返回的状态码") // 业务状态码，非 HTTP
     })
     
-    // We'll add timing information to the result
+    // 我们将向结果中添加计时信息
     WriteResult(func() {
-        Attribute("processedAt", String, "When the request was processed")
-        Attribute("duration", Int, "Processing duration in milliseconds")
+        Attribute("processedAt", String, "请求被处理的时间")
+        Attribute("duration", Int, "处理耗时（毫秒）")
     })
 })
 ```
 
-The `Interceptor` DSL defines a new interceptor named `RequestLogger`. Using
-`ReadResult` and `WriteResult`, it specifies which fields it needs to access
-from the result - in this case reading a result status code and writing timing
-information. Goa also has equivalent DSL to read and write payloads.
+`Interceptor` DSL 定义了名为 `RequestLogger` 的拦截器。结合 `ReadResult` 与 `WriteResult` 指定需要访问的结果字段——此处为读取结果状态码并写入计时信息。Goa 也提供用于读取与写入 Payload 的等效 DSL。
 
-## Applying Interceptors
+## 应用拦截器
 
-You can apply interceptors at both the service and method level:
+拦截器可在服务级与方法级进行应用：
 
 ```go
 var _ = Service("calculator", func() {
-    // Apply to all methods in the service
+    // 应用于服务中的所有方法
     ServerInterceptor(RequestLogger)
     
     Method("add", func() {
-        // Method-specific interceptor
+        // 方法特定拦截器
         ServerInterceptor(ValidateNumbers)
         
         Payload(func() {
@@ -57,32 +51,28 @@ var _ = Service("calculator", func() {
 })
 ```
 
-The example shows how to apply interceptors in the service design using
-`ServerInterceptor`. You can attach them at both the service level (affecting
-all methods) or method level (affecting just that method).
+该示例展示了如何在服务设计中使用 `ServerInterceptor` 应用拦截器。既可在服务级（影响全部方法）应用，也可在方法级（仅影响该方法）应用。
 
-This creates a simple logging system that can track timing across your service
-operations while maintaining type safety through Goa's generated code.
+这样即可在保持 Goa 生成代码类型安全的前提下，构建跨服务的统一计时日志系统。
 
-## Implementing the Interceptor
+## 实现拦截器
 
-The generated code will provide you with type-safe interfaces for implementing
-your interceptor. Here's how to implement the logging interceptor:
+生成的代码会提供类型安全的接口用于实现你的拦截器。以下是日志拦截器的实现方式：
 
 ```go
 func (i *ServerInterceptors) RequestLogger(ctx context.Context, info *RequestLoggerInfo, next goa.Endpoint) (any, error) {
     start := time.Now()
     
-    // Call the next interceptor or the final endpoint
+    // 调用下一个拦截器或最终端点
     res, err := next(ctx, info.RawPayload())
     if err != nil {
         return nil, err
     }
     
-    // Access the result through the type-safe interface
+    // 通过类型安全接口访问结果
     r := info.Result(res)
     
-    // Add our timing information
+    // 添加计时信息
     r.SetProcessedAt(time.Now().Format(time.RFC3339))
     r.SetDuration(int(time.Since(start).Milliseconds()))
     
@@ -90,71 +80,70 @@ func (i *ServerInterceptors) RequestLogger(ctx context.Context, info *RequestLog
 }
 ```
 
-Let's break down how this interceptor works:
+拦截器工作机制解析：
 
-1. The function signature follows Goa's interceptor pattern:
-   - Takes a context, type-safe info object, and the next endpoint
-   - Returns the result and any error
+1. 函数签名遵循 Goa 的拦截器模式：
+   - 接收上下文、类型安全的 info 对象与下一个端点
+   - 返回结果与错误
 
-2. Timing capture:
+2. 记录计时：
 
    ```go
    start := time.Now()
    ```
 
-   Records when the request started
+   记录请求开始时间
 
-3. Calling the next handler:
+3. 调用下一个处理器：
 
    ```go
    res, err := next(ctx, info.RawPayload())
    ```
 
-   - Executes the next interceptor or final endpoint
-   - Passes through the original payload
-   - Returns early if there's an error
+   - 执行下一个拦截器或最终端点
+   - 透传原始 Payload
+   - 出错则提前返回
 
-4. Accessing the result:
+4. 访问结果：
    ```go
    r := info.Result(res)
    ```
-   Uses the generated type-safe interface to access the result
+   使用生成的类型安全接口访问结果
 
-5. Adding timing information:
+5. 添加计时信息：
    ```go
    r.SetProcessedAt(time.Now().Format(time.RFC3339))
    r.SetDuration(int(time.Since(start).Milliseconds()))
    ```
-   - Records when processing completed
-   - Calculates and stores the total duration
-   - Uses generated setters for type safety
+   - 记录处理完成时间
+   - 计算并写入总耗时
+   - 使用生成的 Setter 以确保类型安全
 
-6. Returns the modified result:
+6. 返回修改后的结果：
    ```go
    return res, nil
    ```
-   Passes the enriched response back up the chain
+   将丰富后的响应传递回链路
 
 
-## Using the Interceptor
+## 使用拦截器
 
-Once you've defined your interceptor, Goa generates the necessary code to wire
-it into your service. Here's how the generated code is structured:
+定义拦截器后，Goa 会生成必要代码将其接入你的服务。生成代码结构如下：
 
-1. First, Goa generates a `ServerInterceptors` interface that defines all server-side interceptors:
+1. Goa 首先生成定义所有服务端拦截器的 `ServerInterceptors` 接口：
 
 ```go
-// ServerInterceptors defines the interface for all server-side interceptors
+// ServerInterceptors 定义所有服务端拦截器的接口
 type ServerInterceptors interface {
     RequestLogger(ctx context.Context, info *RequestLoggerInfo, next goa.Endpoint) (any, error)
-    // ... other interceptors ...
+    // ... 其他拦截器 ...
 }
 ```
 
-2. For each interceptor, Goa generates type-safe info structures and interfaces:
+2. 对每个拦截器，Goa 生成类型安全的 info 结构与接口：
 
 ```go
-// Info structure provides metadata about the interception
+// Info 结构提供拦截相关的元信息
 type RequestLoggerInfo struct {
     service    string
     method     string
@@ -162,7 +151,7 @@ type RequestLoggerInfo struct {
     rawPayload any
 }
 
-// Type-safe interface for accessing the result
+// 类型安全的结果访问接口
 type RequestLoggerResult interface {
     Status() int
     SetProcessedAt(string)
@@ -170,7 +159,7 @@ type RequestLoggerResult interface {
 }
 ```
 
-3. Implement the `ServerInterceptors` interface in your service:
+3. 在你的服务中实现 `ServerInterceptors` 接口：
 
 ```go
 type interceptors struct {
@@ -182,7 +171,7 @@ func NewInterceptors(logger *log.Logger) *interceptors {
 }
 
 func (i *interceptors) RequestLogger(ctx context.Context, info *RequestLoggerInfo, next goa.Endpoint) (any, error) {
-    // Implementation from earlier example
+    // 复用前文示例实现
     start := time.Now()
     res, err := next(ctx, info.RawPayload())
     if err != nil {
@@ -197,50 +186,48 @@ func (i *interceptors) RequestLogger(ctx context.Context, info *RequestLoggerInf
 }
 ```
 
-4. Goa generates wrapper functions to apply interceptors to your endpoints:
+4. Goa 生成包装函数以将拦截器应用到端点：
 
 ```go
 func main() {
-    // Create your service implementation
+    // 创建服务实现
     svc := NewService()
     
-    // Create interceptors
+    // 创建拦截器
     interceptors := NewInterceptors(log.Default())
     
-    // Create endpoints with interceptors
+    // 创建带拦截器的端点
     endpoints := NewEndpoints(svc, interceptors)
     
-    // ... Proceed as usual ...
+    // ... 像往常一样继续 ...
 }
 ```
 
-The generated code provides several key benefits:
+生成的代码带来以下好处：
 
-- Type-safe access to payloads and results through generated interfaces
-- Automatic wrapping of endpoints in the correct order
-- Clear separation between interceptor definition and implementation
-- Proper handling of different call types (unary, server streaming, client streaming, bidirectional)
+- 通过类型安全接口访问 Payload 与 Result
+- 自动以正确顺序包装端点
+- 清晰分离拦截器的定义与实现
+- 正确处理不同调用类型（一元、服务端流、客户端流、双向流）
 
-The generated interfaces and wrappers ensure that your interceptors are properly
-integrated into the request processing pipeline while maintaining type safety
-throughout the entire chain.
+这些接口与包装器确保你的拦截器在保持类型安全的同时，正确接入请求处理管道。
 
-## Interceptor Execution Order
+## 拦截器的执行顺序
 
-When multiple interceptors are applied, they execute in the following order:
+当应用多个拦截器时，其执行顺序如下：
 
-1. Service-level interceptors (in order of declaration)
-2. Method-level interceptors (in order of declaration)
-3. The actual endpoint
-4. Method-level interceptors (in reverse order)
-5. Service-level interceptors (in reverse order)
+1. 服务级拦截器（按声明顺序）
+2. 方法级拦截器（按声明顺序）
+3. 实际端点
+4. 方法级拦截器（逆序）
+5. 服务级拦截器（逆序）
 
-This means that interceptors wrap around both the request and response flow.
+这意味着拦截器同时包裹了请求与响应流程。
 
-## Next Steps
+## 下一步
 
-Now that you understand the basics:
+现在你已理解基础内容：
 
-- Learn about different [Types of Interceptors](../2-interceptor-types)
-- Learn about [Interceptor Implementation](3-interceptor-implementation) details and patterns
-- Check out [Best Practices](../4-best-practices) for production use
+- 了解不同的[拦截器类型](../2-interceptor-types)
+- 学习[拦截器实现](3-interceptor-implementation)的细节与模式
+- 查看用于生产的[最佳实践](../4-best-practices)

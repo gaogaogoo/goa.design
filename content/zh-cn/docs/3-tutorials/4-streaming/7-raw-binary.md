@@ -1,42 +1,29 @@
 ---
-title: "Stream Raw Binary Data over HTTP"
-linkTitle: "Raw Binary Streaming"
+title: "通过 HTTP 传输原始二进制数据"
+linkTitle: "原始二进制流"
 weight: 7
-description: "Learn how to efficiently stream raw binary data like files and multimedia content over HTTP using Goa's low-level streaming capabilities."
+description: "学习如何使用 Goa 的底层流式能力，通过 HTTP 高效传输文件和多媒体等原始二进制数据。"
 ---
 
-While Goa's `StreamingPayload` and `StreamingResult` work well for typed data
-streams, sometimes you need direct access to the raw binary data stream. This is
-common when handling file uploads, downloads, or multimedia streams. Goa
-provides this capability through its `SkipRequestBodyEncodeDecode` and
-`SkipResponseBodyEncodeDecode` features.
+尽管 Goa 的 `StreamingPayload` 和 `StreamingResult` 对类型化数据流非常适用，但有时你需要直接访问原始二进制数据流。这在处理文件上传、下载或多媒体流时很常见。Goa 通过 `SkipRequestBodyEncodeDecode` 和 `SkipResponseBodyEncodeDecode` 功能提供了这种能力。
 
-## Choosing Your Streaming Approach
+## 选择你的流式方案
 
-Goa offers two distinct approaches to streaming, each suited for different needs:
+Goa 提供了两种截然不同的流式方法，适用于不同需求：
 
-The `StreamingPayload` and `StreamingResult` approach is ideal when you're
-working with structured data that has known types. It's particularly useful when
-you need type safety, validation, or gRPC compatibility. This approach leverages
-Goa's type system to ensure your data streams maintain their expected structure.
+当你处理具有已知类型的结构化数据时，`StreamingPayload` 与 `StreamingResult` 是理想选择。它在需要类型安全、校验或 gRPC 兼容时尤其有用。该方法利用 Goa 的类型系统确保数据流保持预期结构。
 
-The `SkipRequestBodyEncodeDecode` approach gives you direct access to the raw
-HTTP body stream. This is the right choice when dealing with binary data like
-files or when you need complete control over the data processing. It's
-particularly efficient for large files since it avoids any unnecessary
-encoding/decoding steps.
+`SkipRequestBodyEncodeDecode` 方法则让你直接访问原始 HTTP 请求体流。当处理文件等二进制数据或需要完全掌控数据处理时，它是正确选择。对于大文件，它尤其高效，因为避免了不必要的编解码步骤。
 
-## Request Streaming
+## 请求流（Request Streaming）
 
-Request streaming allows your service to process incoming data as it arrives,
-rather than waiting for the complete payload. Here's how to implement file
-uploads using raw streaming:
+请求流允许服务在数据到达时立即处理，而无需等待完整载荷。以下展示如何使用原始流式处理实现文件上传：
 
 ```go
 var _ = Service("upload", func() {
     Method("upload", func() {
         Payload(func() {
-            // Note: Cannot define body attributes when using streaming
+            // 注意：使用流式时不能定义 body 中的属性
             Attribute("content_type", String)
             Attribute("dir", String)
         })
@@ -49,7 +36,7 @@ var _ = Service("upload", func() {
 })
 ```
 
-Your service implementation receives an `io.ReadCloser` for streaming the request body:
+服务实现会接收一个用于读取请求体的 `io.ReadCloser`：
 
 ```go
 func (s *service) Upload(ctx context.Context, p *upload.Payload, body io.ReadCloser) error {
@@ -64,16 +51,15 @@ func (s *service) Upload(ctx context.Context, p *upload.Payload, body io.ReadClo
         if err != nil {
             return err
         }
-        // Process buffer[:n]
+        // 处理 buffer[:n]
     }
     return nil
 }
 ```
 
-## Response Streaming
+## 响应流（Response Streaming）
 
-Response streaming lets your service send data incrementally to clients. This is
-perfect for file downloads or real-time data feeds. Here's how to implement it:
+响应流允许服务按增量向客户端发送数据，适用于文件下载或实时数据源。以下展示其实现方式：
 
 ```go
 var _ = Service("download", func() {
@@ -93,7 +79,7 @@ var _ = Service("download", func() {
 })
 ```
 
-The service implementation returns both the result and an `io.ReadCloser`:
+服务实现会同时返回结果与一个 `io.ReadCloser`：
 
 ```go
 func (s *service) Download(ctx context.Context, p string) (*download.Result, io.ReadCloser, error) {
@@ -114,9 +100,9 @@ func (s *service) Download(ctx context.Context, p string) (*download.Result, io.
 }
 ```
 
-## Complete Example
+## 完整示例
 
-Here's a complete example that demonstrates both file upload and download streaming in a single service:
+以下是一个在同一服务中同时展示文件上传与下载流式处理的完整示例：
 
 ```go
 package design
@@ -156,7 +142,7 @@ var _ = Service("files", func() {
 })
 ```
 
-The implementation shows a complete file service handling both uploads and downloads:
+下面的实现展示了一个同时处理上传与下载的完整文件服务：
 
 ```go
 type filesService struct {
@@ -196,37 +182,21 @@ func (s *filesService) Download(ctx context.Context, p string) (*files.DownloadR
 }
 ```
 
-Let's examine the key aspects of this implementation:
+让我们来看看该实现的关键点：
 
-The service is built around a simple storage directory concept. Each instance is
-configured with a base directory where all files will be stored and retrieved
-from. This containment within a specific directory provides a basic security
-boundary for file operations.
+该服务围绕一个简单的存储目录概念构建。每个实例都配置了一个基础目录，用于存储和读取所有文件。将文件操作限定在特定目录内，为文件操作提供了基本的安全边界。
 
-For uploads, we've implemented a streaming approach that minimizes memory usage.
-Instead of buffering the entire file in memory, we stream the data directly from
-the request body to the file system using `io.Copy`. The implementation carefully
-manages resources using `defer` statements to ensure proper cleanup, regardless of
-whether the operation succeeds or fails.
+在上传方面，我们采用了尽量减少内存使用的流式方案。与其将整个文件缓存在内存中，不如使用 `io.Copy` 将数据直接从请求体流式写入文件系统。实现通过 `defer` 语句谨慎管理资源，确保无论操作成功或失败都能得到正确清理。
 
-The download implementation is equally efficient. When a download is requested,
-we first open the file and retrieve its metadata in a single operation. This
-allows us to provide the file size to Goa (which it uses for the Content-Length
-header) while also getting the file handle for streaming. Note that we don't
-close the file in the success case - Goa takes ownership of the file handle and
-will close it after streaming the content to the client.
+下载实现同样高效。当发起下载请求时，我们首先打开文件并在一次操作中获取其元数据。这让我们能将文件大小提供给 Goa（用于设置 Content-Length），同时获取用于流式传输的文件句柄。注意在成功的路径中我们不主动关闭文件——Goa 会接管该文件句柄，并在将内容流式发送给客户端后关闭它。
 
-Throughout both operations, error handling is a key focus. The code includes
-proper cleanup of resources when errors occur, clear error propagation back to
-the caller, and safe file path handling to prevent directory traversal attacks.
-This attention to error handling helps ensure the service remains robust and
-secure under various failure conditions.
+在整个过程里，错误处理是重点。代码在错误发生时正确清理资源、将错误清晰地向调用方传播，并安全地处理文件路径以防止目录穿越攻击。对错误处理的重视有助于确保服务在各种故障情形下保持健壮与安全。
 
-This implementation demonstrates efficient streaming by:
-- Using direct file system streaming
-- Properly managing resources with defer statements
-- Providing accurate content length information
-- Implementing proper error handling
-- Ensuring secure file path handling
+该实现通过以下方式体现了高效的流式处理：
+- 直接使用文件系统进行数据流式传输
+- 通过 defer 语句正确管理资源
+- 提供准确的内容长度信息
+- 实现恰当的错误处理
+- 确保文件路径处理的安全性
 
-For related content about serving static files and templates, see the [Static Content](../5-static-content) section.
+关于静态文件与模板的相关内容，请参阅 [静态内容](../5-static-content) 章节。

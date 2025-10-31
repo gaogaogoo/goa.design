@@ -1,27 +1,27 @@
 ---
-title: Basic Authentication
-description: Learn how to implement Basic Authentication in your Goa API
+title: 基本认证
+description: 了解如何在您的 Goa API 中实现基本认证
 weight: 1
 ---
 
-Basic Authentication is a simple authentication scheme built into the HTTP protocol. 
-While it's one of the simplest forms of authentication, it's still widely used, 
-especially for internal APIs or development environments.
+基本认证是 HTTP 协议内置的一种简单认证方案。
+虽然它是最简单的认证形式之一，但它仍然被广泛使用，
+尤其适用于内部 API 或开发环境。
 
-## How Basic Auth Works
+## 基本认证如何工作
 
-When using Basic Authentication:
+使用基本认证时：
 
-1. The client combines the username and password with a colon (username:password)
-2. This string is then base64 encoded
-3. The encoded string is sent in the Authorization header:
+1. 客户端将用户名和密码用冒号连接起来 (username:password)
+2. 然后该字符串被 base64 编码
+3. 编码后的字符串在 Authorization 头中发送：
    `Authorization: Basic base64(username:password)`
 
-## Implementing Basic Auth in Goa
+## 在 Goa 中实现基本认证
 
-### 1. Define the Security Scheme
+### 1. 定义安全方案
 
-First, define your Basic Auth security scheme in your design package:
+首先，在您的设计包中定义您的基本认证安全方案：
 
 ```go
 package design
@@ -30,122 +30,122 @@ import (
     . "goa.design/goa/v3/dsl"
 )
 
-// BasicAuth defines our security scheme
+// BasicAuth 定义了我们的安全方案
 var BasicAuth = BasicAuthSecurity("basic", func() {
-    Description("Use your username and password to access the API")
+    Description("使用您的用户名和密码访问 API")
 })
 ```
 
-### 2. Apply the Security Scheme
+### 2. 应用安全方案
 
-You can apply Basic Auth at different levels:
+您可以在不同级别应用基本认证：
 
 ```go
-// API level - applies to all services and methods
+// API 级别 - 应用于所有服务和方法
 var _ = API("secure_api", func() {
     Security(BasicAuth)
 })
 
-// Service level - applies to all methods in the service
+// 服务级别 - 应用于服务中的所有方法
 var _ = Service("secure_service", func() {
     Security(BasicAuth)
 })
 
-// Method level - applies only to this method
+// 方法级别 - 仅应用于此方法
 Method("secure_method", func() {
     Security(BasicAuth)
 })
 ```
 
-### 3. Define the Payload
+### 3. 定义有效负载
 
-For methods that use Basic Auth, you need to define the payload to include username 
-and password fields:
+对于使用基本认证的方法，您需要定义有效负载以包含用户名
+和密码字段：
 
 ```go
 Method("login", func() {
     Security(BasicAuth)
     Payload(func() {
-        // These special DSL functions are recognized by Goa
-        Username("username", String, "Username for authentication")
-        Password("password", String, "Password for authentication")
+        // Goa 会识别这些特殊的 DSL 函数
+        Username("username", String, "用于认证的用户名")
+        Password("password", String, "用于认证的密码")
         Required("username", "password")
     })
     Result(String)
     HTTP(func() {
         POST("/login")
-        // Response defines what happens after successful authentication
+        // Response 定义了成功认证后发生的情况
         Response(StatusOK)
     })
 })
 ```
 
-### 4. Implement the Security Handler
+### 4. 实现安全处理器
 
-When Goa generates the code, you'll need to implement a security handler. Here's an 
-example:
+当 Goa 生成代码时，您需要实现一个安全处理器。这是一个
+示例：
 
 ```go
-// SecurityBasicAuthFunc implements the authorization logic for Basic Auth
+// SecurityBasicAuthFunc 实现基本认证的授权逻辑
 func (s *service) BasicAuth(ctx context.Context, user, pass string) (context.Context, error) {
-    // Implement your authentication logic here
+    // 在此处实现您的认证逻辑
     if user == "admin" && pass == "secret" {
-        // Authentication successful
+        // 认证成功
         return ctx, nil
     }
-    // Authentication failed
-    return ctx, basic.Unauthorized("invalid credentials")
+    // 认证失败
+    return ctx, basic.Unauthorized("无效的凭据")
 }
 ```
 
-## Best Practices for Basic Auth
+## 基本认证的最佳实践
 
-1. **Always Use HTTPS**
-   Basic Auth sends credentials base64 encoded (not encrypted). Always use HTTPS to 
-   protect credentials in transit.
+1. **始终使用 HTTPS**
+   基本认证以 base64 编码（未加密）发送凭据。始终使用 HTTPS 来
+   保护传输中的凭据。
 
-2. **Secure Password Storage**
-   - Never store passwords in plain text
-   - Use strong hashing algorithms (like bcrypt)
-   - Add salt to password hashes
-   - Consider using a secure password management library
+2. **安全密码存储**
+   - 切勿以纯文本形式存储密码
+   - 使用强哈希算法（如 bcrypt）
+   - 为密码哈希添加盐
+   - 考虑使用安全的密码管理库
 
-3. **Rate Limiting**
-   Implement rate limiting to prevent brute force attacks:
+3. **速率限制**
+   实施速率限制以防止暴力攻击：
 
    ```go
    var _ = Service("secure_service", func() {
        Security(BasicAuth)
-       
-       // Add rate limiting annotation
+
+       // 添加速率限制注解
        Meta("ratelimit:limit", "60")
        Meta("ratelimit:window", "1m")
    })
    ```
 
-4. **Error Messages**
-   Don't reveal whether the username or password was incorrect. Use generic messages:
+4. **错误消息**
+   不要透露是用户名还是密码不正确。使用通用消息：
 
    ```go
-   return ctx, basic.Unauthorized("invalid credentials")
+   return ctx, basic.Unauthorized("无效的凭据")
    ```
 
-5. **Logging**
-   Log authentication attempts but never log passwords:
+5. **日志记录**
+   记录认证尝试，但切勿记录密码：
 
    ```go
    func (s *service) BasicAuth(ctx context.Context, user, pass string) (context.Context, error) {
-       // Good: Log only the username and result
-       log.Printf("Authentication attempt for user: %s", user)
-       
-       // Bad: Never do this
-       // log.Printf("Password attempt: %s", pass)
+       // 好的：只记录用户名和结果
+       log.Printf("用户 %s 的认证尝试", user)
+
+       // 坏的：永远不要这样做
+       // log.Printf("密码尝试：%s", pass)
    }
    ```
 
-## Example Implementation
+## 示例实现
 
-Here's a complete example showing how to implement Basic Auth in a Goa service:
+这是一个完整的示例，展示了如何在 Goa 服务中实现基本认证：
 
 ```go
 package design
@@ -155,48 +155,48 @@ import (
 )
 
 var BasicAuth = BasicAuthSecurity("basic", func() {
-    Description("Basic authentication for API access")
+    Description("用于 API 访问的基本认证")
 })
 
 var _ = API("secure_api", func() {
-    Title("Secure API Example")
-    Description("API demonstrating Basic Authentication")
-    
-    // Apply Basic Auth to all endpoints by default
+    Title("安全 API 示例")
+    Description("演示基本认证的 API")
+
+    // 默认对所有端点应用基本认证
     Security(BasicAuth)
 })
 
 var _ = Service("secure_service", func() {
-    Description("A secure service requiring authentication")
-    
+    Description("需要认证的安全服务")
+
     Method("getData", func() {
-        Description("Get protected data")
-        
-        // Define the security requirements
+        Description("获取受保护的数据")
+
+        // 定义安全要求
         Security(BasicAuth)
-        
-        // Define the payload (credentials will be added automatically)
+
+        // 定义有效负载（凭据将自动添加）
         Payload(func() {
-            // Add any additional payload fields here
-            Field(1, "query", String, "Search query")
+            // 在此处添加任何其他有效负载字段
+            Field(1, "query", String, "搜索查询")
         })
-        
-        // Define the result
+
+        // 定义结果
         Result(ArrayOf(String))
-        
-        // Define the HTTP transport
+
+        // 定义 HTTP 传输
         HTTP(func() {
             GET("/data")
             Response(StatusOK)
             Response(StatusUnauthorized, func() {
-                Description("Invalid credentials")
+                Description("无效的凭据")
             })
         })
     })
-    
-    // Example of a public endpoint
+
+    // 公共端点的示例
     Method("health", func() {
-        Description("Health check endpoint")
+        Description("健康检查端点")
         NoSecurity()
         Result(String)
         HTTP(func() {
@@ -206,57 +206,57 @@ var _ = Service("secure_service", func() {
 })
 ```
 
-## Generated Code
+## 生成的代码
 
-Goa generates several components for Basic Auth:
+Goa 为基本认证生成了几个组件：
 
-1. **Security Types**
-   - Types for credentials
-   - Error types for authentication failures
+1. **安全类型**
+   - 凭据类型
+   - 认证失败的错误类型
 
-2. **Middleware**
-   - Extracts credentials from requests
-   - Calls your security handler
-   - Handles authentication errors
+2. **中间件**
+   - 从请求中提取凭据
+   - 调用您的安全处理器
+   - 处理认证错误
 
-3. **OpenAPI Documentation**
-   - Documents security requirements
-   - Shows required fields
-   - Documents error responses
+3. **OpenAPI 文档**
+   - 记录安全要求
+   - 显示必填字段
+   - 记录错误响应
 
-## Common Issues and Solutions
+## 常见问题和解决方案
 
-### 1. Credentials Not Being Sent
+### 1. 未发送凭据
 
-If credentials aren't being sent, check:
-- The `Authorization` header format
-- Base64 encoding
-- URL encoding of special characters
+如果未发送凭据，请检查：
+- `Authorization` 头的格式
+- Base64 编码
+- 特殊字符的 URL 编码
 
-### 2. Always Getting Unauthorized
+### 2. 总是收到未授权
 
-Common causes:
-- Missing `Security()` in design
-- Incorrect implementation of security handler
-- Middleware order issues
+常见原因：
+- 设计中缺少 `Security()`
+- 安全处理器的实现不正确
+- 中间件顺序问题
 
-### 3. CORS Issues
+### 3. CORS 问题
 
-For browser-based clients, ensure proper CORS configuration:
+对于基于浏览器的客户端，请确保正确的 CORS 配置：
 
 ```go
 var _ = Service("secure_service", func() {
     HTTP(func() {
-        // Allow credentials in CORS
+        // 在 CORS 中允许凭据
         Meta("cors:expose_headers", "Authorization")
         Meta("cors:allow_credentials", "true")
     })
 })
 ```
 
-## Next Steps
+## 后续步骤
 
-- Learn about [API Key Authentication](2-api-key.md)
-- Explore [JWT Authentication](3-jwt.md)
-- Understand [OAuth2 Authentication](4-oauth2.md)
-- Read about [Security Best Practices](5-best-practices.md)
+- 了解 [API 密钥认证](2-api-key.md)
+- 探索 [JWT 认证](3-jwt.md)
+- 理解 [OAuth2 认证](4-oauth2.md)
+- 阅读有关[安全最佳实践](5-best-practices.md)

@@ -1,52 +1,41 @@
 ---
-title: "Customization"
-linkTitle: "Customization"
+title: "自定义"
+linkTitle: "自定义"
 weight: 7
-description: "Learn how to customize and extend Goa's code generation using metadata."
+description: "学习如何使用元数据自定义与扩展 Goa 的代码生成。"
 ---
 
-## Overview
+## 概览
 
-Metadata allows you to control and customize code generation through simple
-tags. Use the `Meta` function to add metadata to your design elements.
+元数据（Metadata）允许你通过简单标签控制与自定义代码生成。使用 `Meta` 函数为设计元素添加元数据。
 
-### Basic Type Generation Control
+### 基础类型生成控制
 
-By default, Goa only generates types that are used by service methods. If you
-define a type in your design but don't reference it in any method parameters or
-results, Goa will skip generating it. 
+默认情况下，Goa 仅生成被服务方法使用的类型。如果你在设计中定义了类型但未在任何方法的参数或结果中引用，Goa 将跳过生成。
 
-The `"type:generate:force"` metadata tag overrides this behavior. It takes
-service names as arguments to specify which services should include the type in
-their generated code. If no service names are provided, the type will be
-generated for all services:
+`"type:generate:force"` 元数据标签可覆盖上述行为。它接收服务名作为参数，用于指定哪些服务的生成代码应包含该类型；若不提供服务名，则在所有服务中生成：
 
 ```go
 var MyType = Type("MyType", func() {
-    // Force type generation in service1 and service2, even if unused
+    // 即使未被使用，也在 service1 与 service2 中强制生成类型
     Meta("type:generate:force", "service1", "service2")
     Attribute("name", String)
 })
 
 var OtherType = Type("OtherType", func() {
-    // Force type generation in all services
+    // 在所有服务中强制生成类型
     Meta("type:generate:force")
     Attribute("id", String)
 })
 ```
 
-### Package Organization
+### 包组织
 
-You can control where types are generated using package metadata. By default,
-types are generated in their respective service packages, but you can generate
-them in a shared package. This is particularly useful when multiple services
-need to work with the same Go structs, such as when sharing business logic or
-data access code. By generating types in a shared package, you avoid having to
-convert between duplicate type definitions across services:
+你可以通过包相关元数据控制类型的生成位置。默认情况下，类型会生成在各自的服务包中，但你也可以将其生成到共享包中。当多个服务需要处理相同的 Go 结构体（例如共享业务逻辑或数据访问代码）时，这尤其有用。通过在共享包中生成类型，可以避免在各服务间来回转换重复的类型定义：
 
 ```go
 var CommonType = Type("CommonType", func() {
-    // Generate in shared types package
+    // 在共享的 types 包中生成
     Meta("struct:pkg:path", "types")
     
     Attribute("id", String)
@@ -54,28 +43,26 @@ var CommonType = Type("CommonType", func() {
 })
 ```
 
-This creates a structure like:
+生成结构示例：
 ```
 project/
 ├── gen/
-│   └── types/              # Shared types package
-│       └── common_type.go # Generated from CommonType
+│   └── types/              # 共享的 types 包
+│       └── common_type.go # 由 CommonType 生成
 ```
 
-{{< alert title="Important Notes" color="primary" >}}
-- All related types must use the same package path
-- Types that reference each other must be in the same package
-- The `types` package is commonly used for shared types
-- Using a shared package eliminates the need to copy or convert between duplicate type definitions when services share code
+{{< alert title="重要说明" color="primary" >}}
+- 所有关联类型必须使用相同的包路径
+- 相互引用的类型必须位于同一包
+- `types` 包通常用于共享类型
+- 使用共享包可消除在服务共享代码时复制或转换重复类型定义的需求
 {{< /alert >}}
 
-### Field Customization
+### 字段自定义
 
-By default, Goa generates field names by converting attribute names to
-CamelCase. For example, an attribute named "user_id" would become "UserID" in
-the generated struct. 
+默认情况下，Goa 会将属性名转换为驼峰命名来生成字段名。例如，属性名 "user_id" 会在生成结构体中变为 "UserID"。
 
-Goa also provides default type mappings from design types to Go types:
+Goa 同时提供了从设计类型到 Go 类型的默认映射：
 - `String` → `string`
 - `Int` → `int`
 - `Int32` → `int32`
@@ -86,30 +73,30 @@ Goa also provides default type mappings from design types to Go types:
 - `Bytes` → `[]byte`
 - `Any` → `any`
 
-You can customize individual fields using several metadata tags:
+你可以使用多个元数据标签自定义个别字段：
 
-- `struct:field:name`: Override the generated field name
-- `struct:field:type`: Override the generated field type
-- `struct:tag:*`: Add custom struct tags
+- `struct:field:name`：覆盖生成的字段名
+- `struct:field:type`：覆盖生成的字段类型
+- `struct:tag:*`：添加自定义 struct 标签
 
-Here's an example combining these:
+综合示例：
 
 ```go
 var Message = Type("Message", func() {
     Meta("struct:pkg:path", "types")
     
     Attribute("id", String, func() {
-        // Override field name
+        // 覆盖字段名
         Meta("struct:field:name", "ID")
-        // Add custom MessagePack tag
+        // 添加自定义的 MessagePack 标签
         Meta("struct:tag:msgpack", "id,omitempty")
-        // Override type with custom type
+        // 使用自定义类型覆盖字段类型
         Meta("struct:field:type", "bison.ObjectId", "github.com/globalsign/mgo/bson", "bison")
     })
 })
 ```
 
-This generates the following Go struct:
+将生成如下 Go 结构体：
 
 ```go
 type Message struct {
@@ -117,63 +104,59 @@ type Message struct {
 }
 ```
 
-{{< alert title="Important Limitations" color="primary" >}}
-When using `struct:field:type`:
-- The overridden type must support the same marshaling/unmarshaling as the original type
-- Goa generates encoding/decoding code based on the original type definition
-- Incompatible marshaling behavior will cause runtime errors
+{{< alert title="重要限制" color="primary" >}}
+使用 `struct:field:type` 时：
+- 覆盖后的类型必须支持与原类型一致的编解码行为
+- Goa 会基于原始类型定义生成编解码代码
+- 若编解码行为不兼容将导致运行时错误
 {{< /alert >}}
 
-## Protocol Buffer Customization
+## Protocol Buffer 自定义
 
-When working with Protocol Buffers, you can customize the generated protobuf
-code using several metadata keys:
+使用 Protocol Buffers 时，可以通过若干元数据键自定义生成的 protobuf 代码：
 
-### Message Type Names
+### 消息类型名
 
-The `struct:name:proto` metadata allows you to override the generated protobuf
-message name. By default, Goa uses the type name from your design:
+`struct:name:proto` 允许覆盖生成的 protobuf 消息名。默认情况下，Goa 使用设计中的类型名：
 
 ```go
 var MyType = Type("MyType", func() {
-    // Changes the protobuf message name to "CustomProtoType"
+    // 将 protobuf 消息名更改为 "CustomProtoType"
     Meta("struct:name:proto", "CustomProtoType")
     
     Field(1, "name", String)
 })
 ```
 
-### Field Types
+### 字段类型
 
-The `struct:field:proto` metadata lets you override the generated protobuf field
-type. This is particularly useful when working with well-known protobuf types or
-types from other proto files. It accepts up to four arguments:
+`struct:field:proto` 允许覆盖生成的 protobuf 字段类型。这在使用 protobuf well-known 类型或其他 proto 文件中的类型时尤为有用。它最多接收 4 个参数：
 
-1. The protobuf type name
-2. (Optional) The proto file import path
-3. (Optional) The Go type name
-4. (Optional) The Go package import path
+1. protobuf 类型名
+2.（可选）proto 文件导入路径
+3.（可选）Go 类型名
+4.（可选）Go 包导入路径
 
 ```go
 var MyType = Type("MyType", func() {
-    // Simple type override
+    // 简单类型覆盖
     Field(1, "status", Int32, func() {
-        // Changes from default sint32 to int32
+        // 从默认的 sint32 改为 int32
         Meta("struct:field:proto", "int32")
     })
 
-    // Using Google's well-known timestamp type
+    // 使用 Google 的 well-known timestamp 类型
     Field(2, "created_at", Timestamp, func() {
         Meta("struct:field:proto", 
-            "google.protobuf.Timestamp",           // Proto type
-            "google/protobuf/timestamp.proto",     // Proto import
-            "Timestamp",                           // Go type
-            "google.golang.org/protobuf/types/known/timestamppb") // Go import
+            "google.protobuf.Timestamp",           // Proto 类型
+            "google/protobuf/timestamp.proto",     // Proto 导入
+            "Timestamp",                           // Go 类型
+            "google.golang.org/protobuf/types/known/timestamppb") // Go 导入
     })
 })
 ```
 
-This generates the following protobuf definition:
+将生成如下 protobuf 定义：
 
 ```protobuf
 import "google/protobuf/timestamp.proto";
@@ -184,55 +167,53 @@ message MyType {
 }
 ```
 
-### Import Paths
+### 导入路径
 
-The `protoc:include` metadata specifies import paths used when invoking the
-protoc compiler. You can set it at either the API or service level:
+`protoc:include` 指定在调用 `protoc` 编译器时使用的导入路径。可在 API 或服务级别进行设置：
 
 ```go
 var _ = API("calc", func() {
-    // Global import paths for all services
+    // 为所有服务设置全局导入路径
     Meta("protoc:include", 
         "/usr/include",
         "/usr/local/include")
 })
 
 var _ = Service("calculator", func() {
-    // Service-specific import paths
+    // 为该服务设置特定导入路径
     Meta("protoc:include", 
         "/usr/local/include/google/protobuf")
     
-    // ... service methods ...
+    // ... 服务方法 ...
 })
 ```
 
-When set on an API definition, the import paths apply to all services. When set
-on a service, the paths only apply to that specific service.
+当设置在 API 定义上时，这些导入路径适用于所有服务；当设置在具体服务上时，路径仅适用于该服务。
 
-{{< alert title="Important Notes" color="primary" >}}
-- The `struct:field:proto` metadata must provide all necessary import information when using external proto types
-- Import paths in `protoc:include` should point to directories containing .proto files
-- Service-level import paths are additional to API-level paths, not replacements
+{{< alert title="重要说明" color="primary" >}}
+- 使用外部 proto 类型时，`struct:field:proto` 必须提供必要的导入信息
+- `protoc:include` 中的路径应指向包含 .proto 文件的目录
+- 服务级导入路径是对 API 级路径的补充，而非替代
 {{< /alert >}}
 
-## OpenAPI Specification Control
+## OpenAPI 规范控制
 
-### Basic OpenAPI Settings
+### 基础 OpenAPI 设置
 
-Control the generation and formatting of OpenAPI specifications:
+控制 OpenAPI 规范的生成与格式化：
 
 ```go
 var _ = API("MyAPI", func() {
-    // Control OpenAPI generation
+    // 控制是否生成 OpenAPI
     Meta("openapi:generate", "false")
     
-    // Format JSON output
+    // 设置 JSON 输出格式
     Meta("openapi:json:prefix", "  ")
     Meta("openapi:json:indent", "  ")
 })
 ```
 
-This affects how the OpenAPI JSON is formatted:
+这会影响 OpenAPI JSON 的格式：
 ```json
 {
   "openapi": "3.0.3",
@@ -243,67 +224,62 @@ This affects how the OpenAPI JSON is formatted:
 }
 ```
 
-### Operation and Type Customization
+### 操作与类型自定义
 
-You can customize how operations and types appear in the OpenAPI spec using
-several metadata keys:
+可通过多个元数据键自定义 OpenAPI 规范中的操作与类型展示：
 
-#### Operation IDs
+#### 操作 ID（Operation ID）
 
-The `openapi:operationId` metadata lets you customize how operation IDs are
-generated. It supports special placeholders that get replaced with actual
-values:
+`openapi:operationId` 允许自定义操作 ID 的生成。它支持以占位符的形式引用实际值：
 
-- `{service}` - replaced with the service name
-- `{method}` - replaced with the method name
-- `(#{routeIndex})` - replaced with the route index (only when a method has multiple routes)
+- `{service}`：替换为服务名
+- `{method}`：替换为方法名
+- `{#routeIndex}`：替换为路由索引（仅当方法具有多条路由时）
 
-For example:
+示例：
 ```go
 var _ = Service("UserService", func() {
     Method("ListUsers", func() {
-        // Generates operationId: "users/list"
-        Meta("openapi:operationId", "users/list")  // Static value
+        // 生成 operationId: "users/list"
+        Meta("openapi:operationId", "users/list")  // 静态值
     })
     
     Method("CreateUser", func() {
-        // Generates operationId: "UserService.CreateUser"
+        // 生成 operationId: "UserService.CreateUser"
         Meta("openapi:operationId", "{service}.{method}")
     })
     
     Method("UpdateUser", func() {
-        // For multiple routes, generates:
-        // - "UserService_UpdateUser_1" (first route)
-        // - "UserService_UpdateUser_2" (second route)
+        // 多条路由时生成：
+        // - "UserService_UpdateUser_1"（第一条路由）
+        // - "UserService_UpdateUser_2"（第二条路由）
         Meta("openapi:operationId", "{service}_{method}_{#routeIndex}")
         
         HTTP(func() {
-            PUT("/users/{id}")   // First route
-            PATCH("/users/{id}") // Second route
+            PUT("/users/{id}")   // 第一条路由
+            PATCH("/users/{id}") // 第二条路由
         })
     })
 })
 ```
 
-#### Operation Summaries
+#### 操作摘要（Summary）
 
-By default, if no summary is provided via metadata, Goa generates a summary by:
-1. Using the method's description if one is defined
-2. If no description exists, using the HTTP method and path (e.g., "GET /users/{id}")
+若未通过元数据提供摘要，Goa 的默认行为为：
+1. 若定义了方法描述则使用描述
+2. 若未定义描述，则使用 HTTP 动词与路径（例如 "GET /users/{id}"）
 
-The `openapi:summary` metadata allows you to override this default behavior. The
-summary appears at the top of each operation and should provide a brief
-description of what the operation does.
+`openapi:summary` 允许覆盖默认摘要。摘要出现在每个操作的顶部，应简要说明该操作的目的。
 
-You can use:
-- A static string
-- The special placeholder `{path}` which gets replaced with the operation's HTTP path
+可以使用：
+- 静态字符串
+- 特殊占位符 `{path}`，会替换为操作的 HTTP 路径
 
 ```go
 var _ = Service("UserService", func() {
     Method("CreateUser", func() {
-        // Uses this description as the default summary
-        Description("Create a new user in the system")
+        // 使用该描述作为默认摘要
+        Description("在系统中创建新用户")
         
         HTTP(func() {
             POST("/users")
@@ -311,8 +287,8 @@ var _ = Service("UserService", func() {
     })
     
     Method("UpdateUser", func() {
-        // Overrides the default summary
-        Meta("openapi:summary", "Handle PUT request to {path}")
+        // 覆盖默认摘要
+        Meta("openapi:summary", "处理对 {path} 的 PUT 请求")
         
         HTTP(func() {
             PUT("/users/{id}")
@@ -320,8 +296,8 @@ var _ = Service("UserService", func() {
     })
     
     Method("ListUsers", func() {
-        // No description or summary metadata
-        // Default summary will be: "GET /users"
+        // 无描述或摘要元数据
+        // 默认摘要将为："GET /users"
         
         HTTP(func() {
             GET("/users")
@@ -330,48 +306,44 @@ var _ = Service("UserService", func() {
 })
 ```
 
-This generates the following OpenAPI specification:
+将生成如下 OpenAPI 规范：
 ```json
 {
   "paths": {
     "/users": {
       "post": {
-        "summary": "Create a new user in the system",
-        "operationId": "UserService.CreateUser",
-        // ... other operation details ...
+        "summary": "在系统中创建新用户",
+        "operationId": "UserService.CreateUser"
       },
       "get": {
         "summary": "GET /users",
-        "operationId": "UserService.ListUsers",
-        // ... other operation details ...
+        "operationId": "UserService.ListUsers"
       }
     },
     "/users/{id}": {
       "put": {
-        "summary": "Handle PUT request to /users/{id}",
-        "operationId": "UserService.UpdateUser",
-        // ... other operation details ...
+        "summary": "处理对 /users/{id} 的 PUT 请求",
+        "operationId": "UserService.UpdateUser"
       }
     }
   }
 }
 ```
 
-{{< alert title="Best Practices" color="primary" >}}
-- Keep summaries concise but descriptive
-- Use consistent wording across related operations
-- Consider including key parameters or constraints in the summary
-- Use {path} when the HTTP path provides important context
+{{< alert title="最佳实践" color="primary" >}}
+- 保持摘要简洁但具描述性
+- 在相关操作间使用一致措辞
+- 可在摘要中包含关键参数或约束
+- 当 HTTP 路径具有重要上下文时使用 {path}
 {{< /alert >}}
 
-#### Type Names
+#### 类型名
 
-The `openapi:typename` metadata allows you to override how a type appears in the
-OpenAPI specification, without affecting the Go type name:
+`openapi:typename` 允许仅在 OpenAPI 规范中覆盖类型名而不影响 Go 类型名：
 
 ```go
 var User = Type("User", func() {
-    // In OpenAPI spec, this type will be named "CustomUser"
+    // 在 OpenAPI 规范中，该类型名将变为 "CustomUser"
     Meta("openapi:typename", "CustomUser")
     
     Attribute("id", Int)
@@ -379,15 +351,13 @@ var User = Type("User", func() {
 })
 ```
 
-#### Example Generation
+#### 示例生成
 
-Goa allows you to specify examples for your types in the design. If no examples
-are specified, Goa generates random examples by default. The `openapi:example`
-metadata lets you disable this example generation behavior:
+Goa 允许在设计中为类型指定示例。若未指定示例，Goa 默认会生成随机示例。`openapi:example` 可用来禁用示例生成：
 
 ```go
 var User = Type("User", func() {
-    // Specify an example (this will be used in the OpenAPI spec)
+    // 指定一个示例（会用于 OpenAPI 规范）
     Example(User{
         ID:   123,
         Name: "John Doe",
@@ -398,8 +368,7 @@ var User = Type("User", func() {
 })
 
 var Account = Type("Account", func() {
-    // Disable example generation for this type
-    // No examples will appear in the OpenAPI spec
+    // 禁用该类型的示例生成
     Meta("openapi:example", "false")
     
     Attribute("id", Int)
@@ -407,44 +376,42 @@ var Account = Type("Account", func() {
 })
 
 var _ = API("MyAPI", func() {
-    // Disable example generation for all types
+    // 为所有类型禁用示例生成
     Meta("openapi:example", "false")
 })
 ```
 
-{{< alert title="Note" color="primary" >}}
-- By default, Goa generates random examples for types without explicit examples
-- Use the `Example()` DSL to specify custom examples
-- Use `Meta("openapi:example", "false")` to prevent any example generation
-- Setting `openapi:example` to false at the API level affects all types
+{{< alert title="注意" color="primary" >}}
+- 默认情况下，未显式示例的类型会生成随机示例
+- 使用 `Example()` DSL 指定自定义示例
+- 使用 `Meta("openapi:example", "false")` 禁止示例生成
+- 在 API 级别将 `openapi:example` 设为 false 会影响所有类型
 {{< /alert >}}
 
-### Tags and Extensions
+### 标签与扩展
 
-You can add tags and custom extensions to your OpenAPI specification at both the
-service and method levels. Tags help group related operations, while extensions
-allow you to add custom metadata to your API specification.
+你可以在服务与方法级为 OpenAPI 规范添加标签与自定义扩展。标签可帮助归类相关操作，扩展允许为 API 规范添加自定义元数据。
 
-#### Service-Level Tags
+#### 服务级标签
 
-When applied at the service level, tags are available to all methods in that service:
+应用在服务级别的标签会对该服务的所有方法生效：
 
 ```go
 var _ = Service("UserService", func() {
-    // Define tags for the entire service
+    // 为整个服务定义标签
     HTTP(func() {
-        // Add a simple tag
+        // 添加简单标签
         Meta("openapi:tag:Users")
         
-        // Add a tag with description
-        Meta("openapi:tag:Backend:desc", "Backend API Operations")
+        // 添加带描述的标签
+        Meta("openapi:tag:Backend:desc", "后端 API 操作")
         
-        // Add documentation URL to the tag
+        // 为标签添加文档 URL
         Meta("openapi:tag:Backend:url", "http://example.com/docs")
-        Meta("openapi:tag:Backend:url:desc", "API Documentation")
+        Meta("openapi:tag:Backend:url:desc", "API 文档")
     })
     
-    // All methods in this service will inherit these tags
+    // 该服务中的所有方法将继承这些标签
     Method("CreateUser", func() {
         HTTP(func() {
             POST("/users")
@@ -459,17 +426,17 @@ var _ = Service("UserService", func() {
 })
 ```
 
-#### Method-Level Tags
+#### 方法级标签
 
-You can also apply tags to specific methods, either adding to or overriding service-level tags:
+也可以为特定方法添加标签，或在方法级覆盖服务级标签：
 
 ```go
 var _ = Service("UserService", func() {
     Method("AdminOperation", func() {
         HTTP(func() {
-            // Add additional tags just for this method
+            // 仅为该方法添加额外标签
             Meta("openapi:tag:Admin")
-            Meta("openapi:tag:Admin:desc", "Administrative Operations")
+            Meta("openapi:tag:Admin:desc", "管理操作")
             
             POST("/admin/users")
         })
@@ -477,24 +444,24 @@ var _ = Service("UserService", func() {
 })
 ```
 
-#### Custom Extensions
+#### 自定义扩展
 
-Extensions can be added at multiple levels to customize different parts of the OpenAPI specification:
+可以在多个层级添加扩展，以自定义 OpenAPI 规范的不同部分：
 
 ```go
 var _ = API("MyAPI", func() {
-    // API-level extension
+    // API 级扩展
     Meta("openapi:extension:x-api-version", `"1.0"`)
 })
 
 var _ = Service("UserService", func() {
-    // Service-level extension
+    // 服务级扩展
     HTTP(func() {
         Meta("openapi:extension:x-service-class", `"premium"`)
     })
     
     Method("CreateUser", func() {
-        // Method-level extension
+        // 方法级扩展
         HTTP(func() {
             Meta("openapi:extension:x-rate-limit", `{"rate": 100, "burst": 200}`)
             POST("/users")
@@ -503,7 +470,7 @@ var _ = Service("UserService", func() {
 })
 ```
 
-This generates the following OpenAPI specification:
+将生成如下 OpenAPI 规范：
 ```json
 {
   "info": {
@@ -512,19 +479,19 @@ This generates the following OpenAPI specification:
   "tags": [
     {
       "name": "Users",
-      "description": "User management operations"
+      "description": "用户管理操作"
     },
     {
       "name": "Backend",
-      "description": "Backend API Operations",
+      "description": "后端 API 操作",
       "externalDocs": {
-        "description": "API Documentation",
+        "description": "API 文档",
         "url": "http://example.com/docs"
       }
     },
     {
       "name": "Admin",
-      "description": "Administrative Operations"
+      "description": "管理操作"
     }
   ],
   "paths": {
@@ -551,37 +518,35 @@ This generates the following OpenAPI specification:
 }
 ```
 
-{{< alert title="Important Notes" color="primary" >}}
-- Service-level tags apply to all methods in the service
-- Method-level tags are added to service-level tags
-- Extensions can be added at API, service, and method levels
-- Extension values must be valid JSON strings
-- Tags help organize and group related operations in API documentation
+{{< alert title:"重要说明" color:"primary" >}}
+- 服务级标签会应用到该服务的所有方法
+- 方法级标签会在服务级标签基础上叠加
+- 扩展可在 API、服务与方法级添加
+- 扩展的值必须为有效的 JSON 字符串
+- 标签有助于在 API 文档中组织与分组相关操作
 {{< /alert >}}
 
-### Testing Custom Types
+### 测试自定义类型
 
-When working with custom types and field overrides, it's important to test that
-your types behave correctly. Here's how to effectively test custom type
-implementations using Clue's mock package:
+当你处理自定义类型与字段覆盖时，测试其行为是否正确很重要。以下演示如何使用 Clue 的 mock 包有效测试自定义类型实现：
 
 ```go
-// Import Clue's mock package
+// 引入 Clue 的 mock 包
 import (
     "github.com/goadesign/clue/mock"
 )
 
-// Example custom type with overridden field type
+// 示例：带覆盖字段类型的自定义类型
 type Message struct {
     ID bison.ObjectId `msgpack:"id,omitempty"`
 }
 
-// Mock implementation using Clue's mock package
+// 使用 Clue 的 mock 包实现的存根
 type mockMessageStore struct {
-    *mock.Mock // Embed Clue's Mock type
+    *mock.Mock // 嵌入 Clue 的 Mock 类型
 }
 
-// Store implements the mock using Clue's Next pattern
+// Store 使用 Clue 的 Next 模式实现模拟
 func (m *mockMessageStore) Store(ctx context.Context, msg *Message) error {
     if f := m.Next("Store"); f != nil {
         return f.(func(context.Context, *Message) error)(ctx, msg)
@@ -590,7 +555,7 @@ func (m *mockMessageStore) Store(ctx context.Context, msg *Message) error {
 }
 
 func TestMessageStore(t *testing.T) {
-    // Create mock store using Clue's mock package
+    // 使用 Clue 的 mock 包创建模拟存储
     store := &mockMessageStore{mock.New()}
     
     tests := []struct {
@@ -625,7 +590,7 @@ func TestMessageStore(t *testing.T) {
         },
         {
             name: "invalid message",
-            msg:  &Message{}, // Empty ID
+            msg:  &Message{}, // 空 ID
             setup: func(m *mockMessageStore) {
                 m.Set("Store", func(ctx context.Context, msg *Message) error {
                     if msg.ID.IsZero() {
@@ -640,21 +605,21 @@ func TestMessageStore(t *testing.T) {
     
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Create fresh mock for each test
+            // 为每个用例创建新的 mock
             mock := &mockMessageStore{mock.New()}
             if tt.setup != nil {
                 tt.setup(mock)
             }
             
-            // Execute test
+            // 执行测试
             err := mock.Store(context.Background(), tt.msg)
             
-            // Verify error behavior
+            // 校验错误行为
             if (err != nil) != tt.wantErr {
                 t.Errorf("Store() error = %v, wantErr %v", err, tt.wantErr)
             }
             
-            // Verify all expected calls were made
+            // 校验所有期望的调用是否已发生
             if mock.HasMore() {
                 t.Error("not all expected operations were performed")
             }
@@ -663,17 +628,12 @@ func TestMessageStore(t *testing.T) {
 }
 ```
 
-This example demonstrates several key features of Clue's mock package:
+该示例展示了 Clue 的 mock 包的多项关键特性：
 
-1. **Type-Safe Mocking**: The mock implementation (`mockMessageStore`) provides a type-safe interface by embedding Clue's `Mock` type
-2. **Custom Type Handling**: Test custom type validation and behavior with proper field types
-3. **Sequence Control**: Use `Add` for ordered operations when needed
-4. **Default Behaviors**: Use `Set` for consistent responses across test cases
-5. **Comprehensive Verification**: The `HasMore` method ensures all expected operations were performed
+1. **类型安全的 Mock**：通过嵌入 Clue 的 `Mock` 类型，模拟实现（`mockMessageStore`）提供类型安全的接口
+2. **自定义类型处理**：使用正确的字段类型测试自定义类型的校验与行为
+3. **顺序控制**：需要顺序操作时可使用 `Add`
+4. **默认行为**：使用 `Set` 在各测试用例中提供一致的响应
+5. **全面验证**：`HasMore` 方法确保所有期望的操作已执行
 
-The test cases demonstrate comprehensive coverage of key scenarios. They verify
-that successful storage operations complete as expected and that error
-conditions are properly handled when storage failures occur. The tests also
-validate that custom type fields meet required constraints, ensuring data
-integrity. Finally, they confirm proper cleanup by verifying that all mock
-expectations are met during test execution.
+这些测试用例覆盖了关键场景：验证成功的存储操作按预期完成；当存储失败时正确处理错误；校验自定义类型字段满足约束，确保数据完整性；最后通过校验所有预期的 mock 调用已被执行来确认清理得当。

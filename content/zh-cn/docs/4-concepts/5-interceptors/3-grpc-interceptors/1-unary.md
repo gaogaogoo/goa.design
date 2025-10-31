@@ -1,20 +1,17 @@
 ---
-title: Unary Interceptors
+title: Unary拦截器
 weight: 1
 description: >
-  Learn how to implement unary gRPC interceptors for Goa services, with practical examples of common patterns.
+  学习如何为 Goa 服务实现Unary gRPC 拦截器，并提供常见模式的实际示例。
 ---
 
-## Unary gRPC Interceptors
+## Unary gRPC 拦截器
 
-Unary interceptors handle single request/response RPCs in gRPC services. They're
-ideal for protocol-level concerns like metadata handling, logging, and monitoring.
-This guide shows you how to implement effective unary interceptors for your Goa
-services.
+Unary拦截器处理 gRPC 服务中的单个请求/响应 RPC。它们非常适合处理协议层面的问题，如元数据处理、日志记录和监控。本指南将向您展示如何为您的 Goa 服务实现有效的Unary拦截器。
 
-## Basic Structure
+## 基本结构
 
-A unary interceptor follows this pattern:
+Unary拦截器遵循以下模式：
 
 ```go
 func UnaryInterceptor(ctx context.Context,
@@ -22,34 +19,34 @@ func UnaryInterceptor(ctx context.Context,
     info *grpc.UnaryServerInfo,
     handler grpc.UnaryHandler) (any, error) {
     
-    // 1. Pre-handler operations
-    // - Extract metadata
-    // - Validate protocol requirements
-    // - Start timing
+    // 1. 处理程序前操作
+    // - 提取元数据
+    // - 验证协议要求
+    // - 开始计时
     
-    // 2. Call the handler
+    // 2. 调用处理程序
     resp, err := handler(ctx, req)
     
-    // 3. Post-handler operations
-    // - Record metrics
-    // - Transform errors
-    // - Add response metadata
+    // 3. 处理程序后操作
+    // - 记录指标
+    // - 转换错误
+    // - 添加响应元数据
     
     return resp, err
 }
 ```
 
-This structure allows you to:
-- Process requests before they reach your handler
-- Modify or record responses after handler execution
-- Handle errors at the protocol level
-- Manage gRPC-specific metadata and context
+这种结构允许您：
+- 在请求到达处理程序之前处理它们
+- 在处理程序执行后修改或记录响应
+- 在协议层面处理错误
+- 管理 gRPC 特定的元数据和上下文
 
-## Common Patterns
+## 常见模式
 
-### 1. Metadata Handling
+### 1. 元数据处理
 
-This interceptor demonstrates proper metadata propagation:
+此拦截器演示了正确的元数据传播：
 
 ```go
 func MetadataInterceptor(ctx context.Context,
@@ -57,26 +54,26 @@ func MetadataInterceptor(ctx context.Context,
     info *grpc.UnaryServerInfo,
     handler grpc.UnaryHandler) (any, error) {
     
-    // Extract incoming metadata
+    // 提取传入的元数据
     md, ok := metadata.FromIncomingContext(ctx)
     if !ok {
         md = metadata.New(nil)
     }
     
-    // Add or modify metadata
+    // 添加或修改元数据
     requestID := md.Get("x-request-id")
     if len(requestID) == 0 {
         requestID = []string{uuid.New().String()}
         md = metadata.Join(md, metadata.Pairs("x-request-id", requestID[0]))
     }
     
-    // Create new context with metadata
+    // 创建带有元数据的新上下文
     ctx = metadata.NewIncomingContext(ctx, md)
     
-    // Call handler
+    // 调用处理程序
     resp, err := handler(ctx, req)
     
-    // Add metadata to response
+    // 将元数据添加到响应中
     header := metadata.Pairs("x-request-id", requestID[0])
     grpc.SetHeader(ctx, header)
     
@@ -84,17 +81,11 @@ func MetadataInterceptor(ctx context.Context,
 }
 ```
 
-This example demonstrates several key metadata handling capabilities. It shows
-how to extract and validate metadata from incoming requests, ensuring that
-required values are present. When values like request IDs are missing, it
-generates new ones to maintain traceability. The interceptor properly propagates
-metadata through the context, making it available to downstream handlers.
-Finally, it adds relevant metadata to responses, enabling end-to-end tracking of
-requests.
+此示例演示了几个关键的元数据处理功能。它展示了如何从传入请求中提取和验证元数据，确保所需值存在。当请求 ID 等值丢失时，它会生成新值以保持可追溯性。拦截器通过上下文正确传播元数据，使其可用于下游处理程序。最后，它将相关元数据添加到响应中，从而实现请求的端到端跟踪。
 
-### 2. Monitoring
+### 2. 监控
 
-This interceptor captures RPC metrics:
+此拦截器捕获 RPC 指标：
 
 ```go
 func MonitoringInterceptor(ctx context.Context,
@@ -104,14 +95,14 @@ func MonitoringInterceptor(ctx context.Context,
     
     start := time.Now()
     
-    // Extract caller information
+    // 提取调用者信息
     peer, _ := peer.FromContext(ctx)
     method := info.FullMethod
     
-    // Call handler
+    // 调用处理程序
     resp, err := handler(ctx, req)
     
-    // Record metrics
+    // 记录指标
     duration := time.Since(start)
     status := status.Code(err)
     
@@ -121,17 +112,11 @@ func MonitoringInterceptor(ctx context.Context,
 }
 ```
 
-This pattern demonstrates several key monitoring capabilities. It accurately
-measures RPC execution time by capturing timestamps before and after the handler
-call. The interceptor extracts important caller information from the context,
-allowing you to track which clients are making requests. It records standardized
-metrics that can be used for monitoring and alerting. Finally, it properly
-handles error status codes, ensuring that failures are accurately captured in
-your metrics.
+此模式演示了几个关键的监控功能。它通过在处理程序调用前后捕获时间戳来准确测量 RPC 执行时间。拦截器从上下文中提取重要的调用者信息，使您能够跟踪哪些客户端正在发出请求。它记录可用于监控和警报的标准化指标。最后，它正确处理错误状态码，确保故障在您的指标中得到准确捕获。
 
-### 3. Protocol Error Handling
+### 3. 协议错误处理
 
-Handle protocol-level errors that occur outside of your service methods:
+处理在服务方法之外发生的协议层面错误：
 
 ```go
 func ProtocolErrorInterceptor(ctx context.Context,
@@ -139,23 +124,23 @@ func ProtocolErrorInterceptor(ctx context.Context,
     info *grpc.UnaryServerInfo,
     handler grpc.UnaryHandler) (any, error) {
     
-    // Handle context errors
+    // 处理上下文错误
     if err := ctx.Err(); err != nil {
         switch err {
         case context.DeadlineExceeded:
-            return nil, status.Error(codes.DeadlineExceeded, "request timeout")
+            return nil, status.Error(codes.DeadlineExceeded, "请求超时")
         case context.Canceled:
-            return nil, status.Error(codes.Canceled, "request canceled")
+            return nil, status.Error(codes.Canceled, "请求已取消")
         }
     }
     
-    // Call handler (Goa handles mapping of design errors to gRPC codes)
+    // 调用处理程序 (Goa 处理将设计错误映射到 gRPC 状态码)
     resp, err := handler(ctx, req)
     if err != nil {
         return nil, err
     }
     
-    // Handle protocol-specific validation
+    // 处理协议特定的验证
     if err := validateProtocolRequirements(resp); err != nil {
         return nil, status.Error(codes.FailedPrecondition, err.Error())
     }
@@ -164,22 +149,14 @@ func ProtocolErrorInterceptor(ctx context.Context,
 }
 ```
 
-This example demonstrates several important aspects of protocol error handling
-in gRPC interceptors. It shows how to properly handle protocol-specific errors
-like timeouts and cancellations that can occur during RPC calls. The interceptor
-preserves Goa's built-in error mapping functionality for design errors while
-adding additional protocol-level validation. It also ensures that appropriate
-gRPC status codes are used when protocol-level issues arise, maintaining
-consistency with gRPC best practices.
+此示例演示了 gRPC 拦截器中协议错误处理的几个重要方面。它展示了如何正确处理在 RPC 调用期间可能发生的协议特定错误，如超时和取消。拦截器在为设计错误添加额外的协议层面验证的同时，保留了 Goa 内置的错误映射功能。它还确保在出现协议层面问题时使用适当的 gRPC 状态码，从而与 gRPC 最佳实践保持一致。
 
-## Testing
+## 测试
 
-Testing gRPC interceptors requires careful consideration of the gRPC context,
-metadata handling, and error propagation. Here's how to use Clue's mock package
-to test interceptors effectively:
+测试 gRPC 拦截器需要仔细考虑 gRPC 上下文、元数据处理和错误传播。以下是如何使用 Clue 的模拟包有效测试拦截器的方法：
 
 ```go
-// Mock implementation for testing
+// 用于测试的模拟实现
 type mockUnaryHandler struct {
     *mock.Mock
 }
@@ -204,17 +181,17 @@ func TestMetadataInterceptor(t *testing.T) {
         wantErr     bool
     }{
         {
-            name: "adds missing request ID",
+            name: "添加缺失的请求 ID",
             setup: func(ctx context.Context, h *mockUnaryHandler) {
                 h.Set("Handle", func(ctx context.Context, req interface{}) (interface{}, error) {
                     md, ok := metadata.FromIncomingContext(ctx)
                     if !ok {
-                        return nil, fmt.Errorf("no metadata in context")
+                        return nil, fmt.Errorf("上下文中没有元数据")
                     }
                     if ids := md.Get("x-request-id"); len(ids) == 0 {
-                        return nil, fmt.Errorf("no request ID added")
+                        return nil, fmt.Errorf("未添加请求 ID")
                     }
-                    return "test response", nil
+                    return "测试响应", nil
                 })
             },
             incomingMD: metadata.New(nil),
@@ -222,15 +199,15 @@ func TestMetadataInterceptor(t *testing.T) {
             wantErr:    false,
         },
         {
-            name: "preserves existing request ID",
+            name: "保留现有的请求 ID",
             setup: func(ctx context.Context, h *mockUnaryHandler) {
                 h.Set("Handle", func(ctx context.Context, req interface{}) (interface{}, error) {
                     md, _ := metadata.FromIncomingContext(ctx)
                     ids := md.Get("x-request-id")
                     if len(ids) != 1 || ids[0] != "test-id" {
-                        return nil, fmt.Errorf("request ID not preserved")
+                        return nil, fmt.Errorf("请求 ID 未保留")
                     }
-                    return "test response", nil
+                    return "测试响应", nil
                 })
             },
             incomingMD: metadata.Pairs("x-request-id", "test-id"),
@@ -241,34 +218,34 @@ func TestMetadataInterceptor(t *testing.T) {
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Create test context with metadata
+            // 创建带有元数据的测试上下文
             ctx := metadata.NewIncomingContext(context.Background(), tt.incomingMD)
             
-            // Create mock handler
+            // 创建模拟处理程序
             handler := newMockUnaryHandler(t)
             if tt.setup != nil {
                 tt.setup(ctx, handler)
             }
 
-            // Call interceptor
-            resp, err := MetadataInterceptor(ctx, "test request",
+            // 调用拦截器
+            resp, err := MetadataInterceptor(ctx, "测试请求",
                 &grpc.UnaryServerInfo{},
                 handler.Handle)
 
-            // Verify error behavior
+            // 验证错误行为
             if (err != nil) != tt.wantErr {
-                t.Errorf("MetadataInterceptor() error = %v, wantErr %v", err, tt.wantErr)
+                t.Errorf("MetadataInterceptor() 错误 = %v, wantErr %v", err, tt.wantErr)
             }
 
-            // Verify all expected calls were made
+            // 验证所有预期的调用都已执行
             if handler.HasMore() {
-                t.Error("not all expected handler operations were performed")
+                t.Error("并非所有预期的处理程序操作都已执行")
             }
         })
     }
 }
 
-// Testing monitoring interceptors
+// 测试监控拦截器
 func TestMonitoringInterceptor(t *testing.T) {
     tests := []struct {
         name       string
@@ -277,25 +254,25 @@ func TestMonitoringInterceptor(t *testing.T) {
         wantErr    bool
     }{
         {
-            name: "records successful call",
+            name: "记录成功的调用",
             setup: func(h *mockUnaryHandler) {
                 h.Set("Handle", func(ctx context.Context, req interface{}) (interface{}, error) {
-                    // Simulate successful processing
+                    // 模拟成功处理
                     time.Sleep(10 * time.Millisecond)
-                    return "success", nil
+                    return "成功", nil
                 })
             },
-            wantMetric: "success",
+            wantMetric: "成功",
             wantErr:    false,
         },
         {
-            name: "records failed call",
+            name: "记录失败的调用",
             setup: func(h *mockUnaryHandler) {
                 h.Set("Handle", func(ctx context.Context, req interface{}) (interface{}, error) {
-                    return nil, status.Error(codes.Internal, "test error")
+                    return nil, status.Error(codes.Internal, "测试错误")
                 })
             },
-            wantMetric: "error",
+            wantMetric: "错误",
             wantErr:    true,
         },
     }
@@ -307,22 +284,22 @@ func TestMonitoringInterceptor(t *testing.T) {
                 tt.setup(handler)
             }
 
-            resp, err := MonitoringInterceptor(context.Background(), "test",
+            resp, err := MonitoringInterceptor(context.Background(), "测试",
                 &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"},
                 handler.Handle)
 
             if (err != nil) != tt.wantErr {
-                t.Errorf("MonitoringInterceptor() error = %v, wantErr %v", err, tt.wantErr)
+                t.Errorf("MonitoringInterceptor() 错误 = %v, wantErr %v", err, tt.wantErr)
             }
 
             if handler.HasMore() {
-                t.Error("not all expected handler operations were performed")
+                t.Error("并非所有预期的处理程序操作都已执行")
             }
         })
     }
 }
 
-// Testing protocol error handling
+// 测试协议错误处理
 func TestProtocolErrorInterceptor(t *testing.T) {
     tests := []struct {
         name      string
@@ -331,7 +308,7 @@ func TestProtocolErrorInterceptor(t *testing.T) {
         wantCode  codes.Code
     }{
         {
-            name: "handles deadline exceeded",
+            name: "处理截止日期超限",
             setup: func(ctx context.Context, h *mockUnaryHandler) {
                 h.Set("Handle", func(ctx context.Context, req interface{}) (interface{}, error) {
                     return nil, ctx.Err()
@@ -339,13 +316,13 @@ func TestProtocolErrorInterceptor(t *testing.T) {
             },
             ctx: func() context.Context {
                 ctx, cancel := context.WithTimeout(context.Background(), 0)
-                cancel()
+                defer cancel()
                 return ctx
             }(),
             wantCode: codes.DeadlineExceeded,
         },
         {
-            name: "handles context canceled",
+            name: "处理上下文已取消",
             setup: func(ctx context.Context, h *mockUnaryHandler) {
                 h.Set("Handle", func(ctx context.Context, req interface{}) (interface{}, error) {
                     return nil, ctx.Err()
@@ -367,45 +344,38 @@ func TestProtocolErrorInterceptor(t *testing.T) {
                 tt.setup(tt.ctx, handler)
             }
 
-            resp, err := ProtocolErrorInterceptor(tt.ctx, "test",
+            resp, err := ProtocolErrorInterceptor(tt.ctx, "测试",
                 &grpc.UnaryServerInfo{},
                 handler.Handle)
 
             if status.Code(err) != tt.wantCode {
-                t.Errorf("ProtocolErrorInterceptor() status code = %v, want %v",
+                t.Errorf("ProtocolErrorInterceptor() 状态码 = %v, want %v",
                     status.Code(err), tt.wantCode)
             }
 
             if handler.HasMore() {
-                t.Error("not all expected handler operations were performed")
+                t.Error("并非所有预期的处理程序操作都已执行")
             }
         })
     }
 }
 ```
 
-These examples demonstrate several key testing techniques for gRPC interceptors.
-First, they show how to effectively use Clue's mock package to create test
-doubles that verify interceptor behavior. The `Set` method defines default
-behaviors for operations, while `Next` allows for sequence-specific responses.
-The tests cover verification of metadata handling, metrics recording, and error
-status codes. Additionally, they demonstrate how to test complex context
-scenarios, such as cancellation and timeouts, which are common in real-world
-gRPC applications.
+这些示例演示了 gRPC 拦截器的几种关键测试技术。首先，它们展示了如何有效使用 Clue 的模拟包创建测试替身来验证拦截器行为。`Set` 方法为操作定义默认行为，而 `Next` 允许序列特定的响应。测试涵盖了元数据处理、指标记录和错误状态码的验证。此外，它们还演示了如何测试复杂的上下文场景，例如取消和超时，这些在实际的 gRPC 应用程序中很常见。
 
-## Best Practices
+## 最佳实践
 
-1. **Keep it Simple**: Each interceptor should handle one concern.
-2. **Handle Context**: Respect context cancellation and deadlines.
-3. **Error Handling**: Use appropriate gRPC status codes.
-4. **Performance**: Minimize allocations and expensive operations.
-5. **Testing**: Test edge cases and error conditions.
-6. **Logging**: Use structured logging for debugging.
-7. **Metrics**: Record relevant metrics for monitoring.
+1.  **保持简单**：每个拦截器应只处理一个问题。
+2.  **处理上下文**：尊重上下文取消和截止日期。
+3.  **错误处理**：使用适当的 gRPC 状态码。
+4.  **性能**：最小化分配和昂贵的操作。
+5.  **测试**：测试边缘情况和错误条件。
+6.  **日志记录**：使用结构化日志进行调试。
+7.  **指标**：记录相关指标以进行监控。
 
-## Next Steps
+## 下一步
 
-- Learn about [Stream Interceptors](@/docs/4-concepts/5-interceptors/3-grpc-interceptors/2-stream.md)
-- Review [Error Handling](@/docs/4-concepts/4-error-handling.md)
-- Explore [Observability](@/docs/5-real-world/2-observability.md)
+- 学习[流拦截器](@/docs/4-concepts/5-interceptors/3-grpc-interceptors/2-stream.md)
+- 回顾[错误处理](@/docs/4-concepts/4-error-handling.md)
+- 探索[可观察性](@/docs/5-real-world/2-observability.md)
 

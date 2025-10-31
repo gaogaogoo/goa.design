@@ -1,82 +1,78 @@
 ---
-title: "WebSocket Integration"
+title: "WebSocket 集成"
 linkTitle: "WebSocket"
 weight: 3
-description: "Learn how to add WebSocket support to your services, including connection handling, message formats, error handling, and client implementations."
+description: "学习为服务添加 WebSocket 支持，包括连接处理、消息格式、错误处理与客户端实现。"
 menu:
   main:
     parent: "HTTP Advanced Topics"
     weight: 3
 ---
 
-WebSocket integration in Goa enables your services to handle real-time, bidirectional
-communications. This guide explains how to implement WebSocket connections in your
-services, progressing from basic concepts to advanced implementations.
+在 Goa 中集成 WebSocket 可让你的服务处理实时、双向通信。本文从基础概念到高级实现，解释如何在服务中实现 WebSocket 连接。
 
-{{< alert title="See also" color="info" >}}
-For a full overview of transport options and valid streaming combinations (HTTP, JSON‑RPC, gRPC), visit
-[Transports](../../6-transports).
+{{< alert title="另见" color="info" >}}
+有关传输选项及有效的流式组合（HTTP、JSON‑RPC、gRPC）的完整概览，请参阅
+[Transports](../../6-transports)。
 {{< /alert >}}
 
-## Core Concepts
+## 核心概念
 
-WebSocket is a protocol that provides full-duplex communication over a single TCP
-connection. Goa implements WebSocket support through its streaming DSL, which
-offers three key patterns:
+WebSocket 是在单个 TCP 连接上提供全双工通信的协议。Goa 通过其流式 DSL 实现 WebSocket 支持，提供三种关键模式：
 
-1. **Client-to-Server Streaming** (`StreamingPayload`): Client sends a stream of messages to the server
-2. **Server-to-Client Streaming** (`StreamingResult`): Server sends a stream of messages to the client
-3. **Bidirectional Streaming**: Using both DSLs enables two-way communication
+1. **客户端到服务端流式**（`StreamingPayload`）：客户端向服务端发送消息流
+2. **服务端到客户端流式**（`StreamingResult`）：服务端向客户端发送消息流
+3. **双向流式**：同时使用上述 DSL，实现双向通信
 
-### Protocol Requirements
+### 协议要求
 
-WebSocket connections always initiate with a GET request for the protocol upgrade. In Goa, this means:
+WebSocket 连接总是以 GET 请求发起以进行协议升级。在 Goa 中，这意味着：
 
 ```go
-// All WebSocket endpoints must use GET, regardless of their logical operation
+// 所有 WebSocket 端点必须使用 GET，与其具体业务操作无关
 HTTP(func() {
-    GET("/stream")    // Required for WebSocket upgrade
-    Param("token")    // Additional parameters as needed
+    GET("/stream")    // WebSocket 升级所需
+    Param("token")    // 按需添加其他参数
 })
 ```
 
-## Basic Streaming Patterns
+## 基础流式模式
 
-Let's explore each streaming pattern using examples from a chat service implementation.
+以下以聊天服务为例，逐一展示各流式模式。
 
-### Client-to-Server Streaming
+### 客户端到服务端流式
 
-In this example, we implement a listener that receives messages from clients:
+此示例实现一个监听器接收来自客户端的消息：
 
 ```go
 Method("listener", func() {
-    // Message format for the stream
+    // 流的消息格式
     StreamingPayload(func() {
-        Field(1, "message", String, "Message content")
+        Field(1, "message", String, "消息内容")
         Required("message")
     })
     
     HTTP(func() {
-        GET("/listen")              // WebSocket endpoint
+        GET("/listen")              // WebSocket 端点
     })
 })
 ```
 
-This design:
-- Accepts an ongoing stream of messages from clients
-- Processes each message as it arrives
-- Uses a simple message format with a required content field
+该设计：
+- 接受来自客户端的持续消息流
+- 到达即处理每条消息
+- 使用带必填内容字段的简洁消息格式
 
-### Server-to-Client Streaming
+### 服务端到客户端流式
 
-In this example, we create a subscription service that sends updates to clients:
+此示例创建一个订阅服务，将更新推送给客户端：
 
 ```go
 Method("subscribe", func() {
     StreamingResult(func() {
-        Field(1, "message", String, "Update content")
-        Field(2, "action", String, "Action type")
-        Field(3, "timestamp", String, "When it happened")
+        Field(1, "message", String, "更新内容")
+        Field(2, "action", String, "动作类型")
+        Field(3, "timestamp", String, "发生时间")
         Required("message", "action", "timestamp")
     })
     
@@ -86,26 +82,26 @@ Method("subscribe", func() {
 })
 ```
 
-This pattern:
-- Establishes a one-way stream to clients
-- Sends structured updates with metadata
-- Maintains the connection for continuous updates
+该模式：
+- 建立到客户端的单向流
+- 发送带元数据的结构化更新
+- 保持连接以连续推送
 
-### Bidirectional Communication
+### 双向通信
 
-In this example, we create an echo service demonstrating two-way communication:
+此示例创建一个回声服务展示双向通信：
 
 ```go
 Method("echo", func() {
-    // Client messages
+    // 客户端消息
     StreamingPayload(func() {
-        Field(1, "message", String, "Message to echo")
+        Field(1, "message", String, "要回显的消息")
         Required("message")
     })
     
-    // Server responses
+    // 服务端响应
     StreamingResult(func() {
-        Field(1, "message", String, "Echoed message")
+        Field(1, "message", String, "回显的消息")
         Required("message")
     })
     
@@ -115,44 +111,44 @@ Method("echo", func() {
 })
 ```
 
-This design:
-- Enables simultaneous sending and receiving of messages
-- Uses matching message formats for simplicity
-- Demonstrates basic request-response pattern over WebSocket
+该设计：
+- 允许同时发送与接收消息
+- 使用匹配的消息格式以简化实现
+- 在 WebSocket 上展示基本的请求-响应模式
 
-## Implementation Guide
+## 实现指南
 
-Implementing WebSocket services in Goa requires careful consideration of both server and client-side patterns. While the basic concepts are straightforward, proper implementation needs to account for connection management, concurrent operations, and error handling. Let's explore these aspects using our chat service as an example.
+在 Goa 中实现 WebSocket 服务需要同时考虑服务端与客户端模式。尽管基础概念简单，但正确的实现需兼顾连接管理、并发处理与错误处理。以下以聊天服务为例进行说明。
 
-### Server-Side Implementation
+### 服务端实现
 
-The server side of a WebSocket service must manage the full lifecycle of connections while handling messages efficiently. At its core, a WebSocket server needs to maintain active connections, process messages concurrently, and ensure proper cleanup when connections end.
+服务端必须在高效处理消息的同时管理连接的完整生命周期。本质上，WebSocket 服务器需要维护活动连接、并发处理消息，并在连接结束时确保清理到位。
 
-Connection management forms the foundation of any WebSocket server. When a client connects, the server must validate the connection, set up necessary state, and prepare for message handling. Here's how this typically looks in practice:
+连接管理是任何 WebSocket 服务器的基础。当客户端接入时，服务器需要验证连接、初始化必要状态，并为消息处理做好准备。实践中通常如下：
 
 ```go
 func (s *service) handleStream(ctx context.Context, stream Stream) error {
-    // Initialize connection state
+    // 初始化连接状态
     connID := generateConnectionID()
     s.registerConnection(connID, stream)
     defer s.cleanupConnection(connID)
 
-    // Start message processing
+    // 开始消息处理
     return s.processMessages(ctx, stream)
 }
 ```
 
-Message processing requires careful handling of concurrency. The server must be able to receive messages while simultaneously sending responses. This is typically achieved using goroutines to separate these concerns:
+消息处理需要谨慎对待并发。服务器必须在接收消息的同时发送响应。通常使用 goroutine 来分离这些关注点：
 
 ```go
 func (s *service) processMessages(ctx context.Context, stream Stream) error {
-    // Handle incoming messages in a separate goroutine
+    // 在独立的 goroutine 中处理入站消息
     errChan := make(chan error, 1)
     go func() {
         errChan <- s.handleIncoming(stream)
     }()
 
-    // Wait for either context cancellation or processing error
+    // 等待上下文取消或处理错误
     select {
     case <-ctx.Done():
         return ctx.Err()
@@ -162,13 +158,13 @@ func (s *service) processMessages(ctx context.Context, stream Stream) error {
 }
 ```
 
-Error handling is particularly important in WebSocket implementations because connections can fail in various ways. Network issues, client disconnections, and application errors all need to be handled gracefully to maintain service stability.
+错误处理在 WebSocket 实现中尤为重要，因为连接可能以多种方式失败。应优雅处理网络问题、客户端断开与应用错误，以保持服务稳定性。
 
-### Client-Side Implementation
+### 客户端实现
 
-Client implementations face their own set of challenges. A robust WebSocket client needs to maintain connectivity, handle message flow in both directions, and provide a good user experience even when issues occur.
+客户端实现也面临挑战。一个健壮的 WebSocket 客户端需保持连接性、双向处理消息流，并在出现问题时仍提供良好体验。
 
-Connection management on the client side involves establishing the initial connection and handling reconnection when failures occur. Here's an example of a client that implements automatic reconnection:
+客户端的连接管理涉及建立初始连接与在失败时处理重连。以下示例实现了自动重连：
 
 ```go
 func connectWithRetry(ctx context.Context) (*WSClient, error) {
@@ -182,29 +178,29 @@ func connectWithRetry(ctx context.Context) (*WSClient, error) {
         case <-ctx.Done():
             return nil, ctx.Err()
         case <-time.After(backoffDuration):
-            // Continue retry loop
+            // 继续重试循环
         }
     }
 }
 ```
 
-Message handling in clients often needs to coordinate between user input and server messages. This typically involves managing multiple goroutines while ensuring proper synchronization:
+客户端的消息处理通常需要协调用户输入与服务端消息。这通常意味着管理多个 goroutine 并确保同步正确：
 
 ```go
 func (c *Client) handleMessages(ctx context.Context) {
-    // Process incoming messages
+    // 处理入站消息
     go c.receiveMessages(ctx)
 
-    // Handle user input
+    // 处理用户输入
     c.processUserInput(ctx)
 }
 ```
 
-### Common Implementation Challenges
+### 常见实现挑战
 
-Several challenges commonly arise when implementing WebSocket services. Understanding these challenges and their solutions helps create more robust implementations.
+实现 WebSocket 服务时常见若干挑战。理解这些挑战与解决方案有助于构建更健壮的实现。
 
-Message ordering can become an issue in real-time applications. While WebSocket provides message ordering guarantees within a single connection, application-level ordering might still be necessary. For example, in a chat application, messages should be displayed in the order they were sent:
+实时应用中消息排序可能成为问题。尽管 WebSocket 在单个连接内提供消息排序保证，但在应用层仍可能需要排序。例如在聊天应用中，消息应按发送顺序显示：
 
 ```go
 type Message struct {
@@ -214,7 +210,7 @@ type Message struct {
 }
 ```
 
-State management becomes complex when dealing with multiple connections or stateful protocols. Services need to track not just connection state but also application state. For example, in a chat room service:
+在处理多连接或有状态协议时，状态管理会变得复杂。服务需要跟踪的不仅是连接状态，还有应用状态。例如在聊天室服务中：
 
 ```go
 type ChatRoom struct {
@@ -226,7 +222,7 @@ type ChatRoom struct {
 }
 ```
 
-Resource management is crucial for long-lived connections. Memory leaks can occur if connections aren't properly tracked and cleaned up. A connection manager helps handle this:
+长连接的资源管理至关重要。如果未正确跟踪与清理，可能产生内存泄漏。可通过连接管理器模式进行处理：
 
 ```go
 type ConnectionManager struct {
@@ -247,33 +243,33 @@ func (cm *ConnectionManager) cleanup() {
 }
 ```
 
-## Advanced Features
+## 高级特性
 
-WebSocket services often require advanced features to handle complex real-world requirements. Let's explore some powerful capabilities that Goa provides for building sophisticated WebSocket applications.
+WebSocket 服务常需要高级特性以处理复杂的真实场景。以下介绍 Goa 为构建复杂 WebSocket 应用提供的一些强大功能。
 
-### Message Views and Projections
+### 消息视图与投影
 
-Message views allow you to present the same data in different formats depending on the client's needs. This is particularly useful in scenarios where different clients need different levels of detail, or when bandwidth optimization is important.
+消息视图允许根据客户端需求以不同格式呈现相同数据。在不同客户端需要不同细粒度或需要进行带宽优化的场景中尤为有用。
 
-For example, in a real-time analytics service, some clients might need detailed data while others only need summaries:
+例如在实时分析服务中，部分客户端可能需要详细数据，部分仅需摘要：
 
 ```go
 Method("analytics", func() {
     StreamingResult(func() {
-        // Define all possible fields
-        Field(1, "timestamp", String, "When the event occurred")
-        Field(2, "metric", String, "Name of the metric")
-        Field(3, "value", Float64, "Current value")
-        Field(4, "change", Float64, "Change from previous value")
-        Field(5, "metadata", MapOf(String, String), "Additional context")
+        // 定义所有可能字段
+        Field(1, "timestamp", String, "事件发生时间")
+        Field(2, "metric", String, "指标名称")
+        Field(3, "value", Float64, "当前值")
+        Field(4, "change", Float64, "相对上一次的变化")
+        Field(5, "metadata", MapOf(String, String), "额外上下文")
         
-        // Summary view for dashboard displays
+        // 用于仪表盘展示的摘要视图
         View("summary", func() {
             Attribute("metric")
             Attribute("value")
         })
         
-        // Detailed view for analysis tools
+        // 用于分析工具的详细视图
         View("detailed", func() {
             Attribute("timestamp")
             Attribute("metric")
@@ -281,7 +277,7 @@ Method("analytics", func() {
             Attribute("change")
         })
         
-        // Complete view for data processing
+        // 用于数据处理的完整视图
         View("full", func() {
             Attribute("timestamp")
             Attribute("metric")
@@ -293,25 +289,25 @@ Method("analytics", func() {
 })
 ```
 
-This design enables:
-1. Bandwidth optimization by sending only needed fields
-2. Client-specific data views without server-side duplication
-3. Flexible data representation for different use cases
+该设计实现：
+1. 通过仅发送所需字段进行带宽优化
+2. 无需在服务端重复实现即可提供客户端特定数据视图
+3. 为不同使用场景提供灵活的数据表示
 
-### Advanced Connection Management
+### 进阶连接管理
 
-Connection management in production systems requires sophisticated handling of connection lifecycles, health monitoring, and resource optimization. Here's a comprehensive approach:
+生产系统中的连接管理需对连接生命周期、健康监控与资源优化进行精细处理。以下是一个全面的方案：
 
 ```go
 type ConnectionManager struct {
-    // Core connection tracking
+    // 核心连接跟踪
     connections map[string]*ManagedConnection
     mu         sync.RWMutex
 
-    // Configuration
+    // 配置
     config ConnectionConfig
 
-    // Monitoring and metrics
+    // 监控与度量
     metrics    *Metrics
     healthLog  *HealthLogger
 }
@@ -328,7 +324,7 @@ func (cm *ConnectionManager) manageConnection(ctx context.Context, stream Stream
     conn := cm.setupConnection(stream)
     defer cm.cleanupConnection(conn)
 
-    // Set up health monitoring
+    // 设置健康监控
     pingTicker := time.NewTicker(cm.config.PingInterval)
     healthTicker := time.NewTicker(cm.config.HealthCheckInterval)
     defer func() {
@@ -336,18 +332,18 @@ func (cm *ConnectionManager) manageConnection(ctx context.Context, stream Stream
         healthTicker.Stop()
     }()
 
-    // Monitor connection health
+    // 监控连接健康
     go cm.monitorHealth(ctx, conn, healthTicker.C)
 
-    // Handle ping/pong
+    // 处理心跳（ping/pong）
     go cm.handleHeartbeat(ctx, conn, pingTicker.C)
 
-    // Process messages
+    // 处理消息
     return cm.processMessages(ctx, conn)
 }
 ```
 
-The health monitoring system ensures connections remain viable:
+健康监控系统确保连接保持可用：
 
 ```go
 func (cm *ConnectionManager) monitorHealth(ctx context.Context, conn *ManagedConnection, checkTicker <-chan time.Time) {
@@ -365,17 +361,17 @@ func (cm *ConnectionManager) monitorHealth(ctx context.Context, conn *ManagedCon
 }
 
 func (cm *ConnectionManager) isConnectionHealthy(conn *ManagedConnection) bool {
-    // Check last ping time
+    // 检查最后一次 ping 时间
     if time.Since(conn.LastPing) > cm.config.MaxPingInterval {
         return false
     }
 
-    // Check error rate
+    // 检查错误率
     if conn.Stats.ErrorRate() > cm.config.MaxErrorRate {
         return false
     }
 
-    // Check resource usage
+    // 检查资源使用
     if conn.Stats.ResourceUsage() > cm.config.MaxResourceUsage {
         return false
     }
@@ -384,9 +380,9 @@ func (cm *ConnectionManager) isConnectionHealthy(conn *ManagedConnection) bool {
 }
 ```
 
-### Protocol Extensions
+### 协议扩展
 
-Goa's WebSocket implementation can be extended to support advanced protocol features. Here's an example of implementing a custom subprotocol for message prioritization:
+Goa 的 WebSocket 实现可扩展以支持高级协议特性。以下示例实现了消息优先级的自定义子协议：
 
 ```go
 type PriorityMessage struct {
@@ -404,7 +400,7 @@ const (
 )
 
 func (s *service) handlePriorityMessages(ctx context.Context, stream Stream) error {
-    // Set up priority queues
+    // 设置优先级队列
     queues := map[MessagePriority]chan *Message{
         UrgentPriority:  make(chan *Message, 100),
         HighPriority:    make(chan *Message, 100),
@@ -412,7 +408,7 @@ func (s *service) handlePriorityMessages(ctx context.Context, stream Stream) err
         LowPriority:     make(chan *Message, 100),
     }
 
-    // Handle incoming messages
+    // 处理入站消息
     go func() {
         for {
             msg, err := stream.Recv()
@@ -420,19 +416,19 @@ func (s *service) handlePriorityMessages(ctx context.Context, stream Stream) err
                 return
             }
 
-            // Route message to appropriate queue
+            // 路由消息到对应队列
             priority := determinePriority(msg)
             queues[priority] <- msg
         }
     }()
 
-    // Process queues with priority
+    // 按优先级处理队列
     return s.processPriorityQueues(ctx, queues, stream)
 }
 
 func (s *service) processPriorityQueues(ctx context.Context, queues map[MessagePriority]chan *Message, stream Stream) error {
     for {
-        // Check queues in priority order
+        // 按优先级检查队列
         for priority := UrgentPriority; priority >= LowPriority; priority-- {
             select {
             case msg := <-queues[priority]:
@@ -444,7 +440,7 @@ func (s *service) processPriorityQueues(ctx context.Context, queues map[MessageP
             }
         }
 
-        // Check context after processing all queues
+        // 处理完所有队列后检查上下文
         select {
         case <-ctx.Done():
             return ctx.Err()
@@ -455,41 +451,41 @@ func (s *service) processPriorityQueues(ctx context.Context, queues map[MessageP
 }
 ```
 
-This implementation provides:
-1. Message prioritization based on content or metadata
-2. Guaranteed processing order within priority levels
-3. Fair handling of lower-priority messages
-4. Resource management through buffered channels
+该实现提供：
+1. 基于内容或元数据的消息优先级
+2. 在同一优先级内保证处理顺序
+3. 公平处理低优先级消息
+4. 通过缓冲通道进行资源管理
 
-## Best Practices
+## 最佳实践
 
-When building WebSocket services, following established best practices helps create reliable, maintainable, and efficient implementations. Here are key practices to consider in your implementations.
+构建 WebSocket 服务时，遵循既定最佳实践有助于实现可靠、可维护且高效的实现。以下是值得考虑的关键实践。
 
-### Error Handling
+### 错误处理
 
-WebSocket connections can fail in many ways, from network issues to application errors. A robust error handling strategy should distinguish between different types of failures and handle each appropriately. Some errors are temporary and can be recovered from, while others require terminating the connection.
+WebSocket 连接可能因网络问题或应用错误而失败。健壮的错误处理策略应区分不同类型的失败并分别处理。部分错误可临时恢复，部分则需要终止连接。
 
-Network errors, for instance, often resolve themselves and warrant retry attempts. Application errors like rate limiting might need backoff strategies. Unrecoverable errors, such as authentication failures, require immediate connection termination. Here's how to implement this kind of sophisticated error handling:
+例如网络错误通常会自动恢复，应进行重试；应用错误如限流则需要退避策略；不可恢复的错误（如认证失败）应立即终止连接。以下展示了实现该类精细错误处理的方法：
 
 ```go
 func handleStreamError(err error) error {
     switch {
     case isRecoverable(err):
-        // Temporary network issues can be retried
+        // 临时网络问题可重试
         return retryWithBackoff(err)
         
     case isResourceExhausted(err):
-        // Rate limiting or resource constraints need backoff
+        // 限流或资源约束需要退避
         return applyBackpressure(err)
         
     default:
-        // Authentication failures or other critical errors
+        // 认证失败或其他致命错误
         return terminateStream(err)
     }
 }
 ```
 
-When implementing retries, use exponential backoff to prevent overwhelming the system during recovery:
+实现重试时，使用指数退避以避免在恢复期间压垮系统：
 
 ```go
 func retryWithBackoff(err error) error {
@@ -500,7 +496,7 @@ func retryWithBackoff(err error) error {
         if err = tryOperation(); err == nil {
             return nil
         }
-        // Double the wait time with each attempt
+        // 每次尝试翻倍等待时间
         time.Sleep(backoff)
         backoff *= 2
     }
@@ -508,11 +504,11 @@ func retryWithBackoff(err error) error {
 }
 ```
 
-### Resource Management
+### 资源管理
 
-Long-lived WebSocket connections can consume significant resources. Without proper management, this can lead to memory leaks and degraded performance. A comprehensive resource management strategy should track all active connections, monitor their health, and ensure proper cleanup.
+长寿命的 WebSocket 连接会消耗大量资源。如未妥善管理，可能导致内存泄漏与性能下降。全面的资源管理策略应跟踪所有活跃连接、监控其健康并确保清理到位。
 
-The StreamManager pattern provides a centralized way to manage connection lifecycles:
+StreamManager 模式提供了集中管理连接生命周期的方式：
 
 ```go
 type StreamManager struct {
@@ -526,7 +522,7 @@ func NewStreamManager(metrics *Metrics) *StreamManager {
         streams: make(map[string]*Stream),
         metrics: metrics,
     }
-    // Start periodic cleanup
+    // 启动定期清理
     go sm.periodicCleanup()
     return sm
 }
@@ -535,10 +531,10 @@ func (m *StreamManager) AddStream(id string, stream *Stream) {
     m.mu.Lock()
     defer m.mu.Unlock()
     
-    // Track new connection in metrics
+    // 在指标中跟踪新连接
     m.metrics.ActiveConnections.Inc()
     
-    // Set up automatic cleanup when the context is cancelled
+    // 当上下文取消时自动清理
     go func() {
         <-stream.Context().Done()
         m.removeStream(id)
@@ -549,7 +545,7 @@ func (m *StreamManager) AddStream(id string, stream *Stream) {
 }
 ```
 
-This manager not only tracks connections but also integrates with monitoring systems to provide visibility into resource usage. Regular cleanup prevents resource leaks:
+该管理器不仅跟踪连接，还可与监控系统集成以提供资源使用可视化。定期清理可防止资源泄漏：
 
 ```go
 func (m *StreamManager) periodicCleanup() {
@@ -569,32 +565,32 @@ func (m *StreamManager) periodicCleanup() {
 }
 ```
 
-### Performance Optimization
+### 性能优化
 
-WebSocket performance optimization involves several aspects: connection handling, message processing, and data transmission. Each area requires specific techniques to achieve optimal performance.
+WebSocket 的性能优化涉及连接处理、消息处理与数据传输等多个方面。每个领域都需要特定技术以实现最佳性能。
 
-Connection handling can be optimized through proper buffer sizing and compression settings:
+通过合理的缓冲大小与压缩设置可优化连接处理：
 
 ```go
 var upgrader = websocket.Upgrader{
-    // Larger buffers for better throughput with large messages
-    ReadBufferSize:  1024 * 16,  // 16KB read buffer
-    WriteBufferSize: 1024 * 16,  // 16KB write buffer
+    // 为大消息提供更好的吞吐
+    ReadBufferSize:  1024 * 16,  // 16KB 读取缓冲
+    WriteBufferSize: 1024 * 16,  // 16KB 写入缓冲
     
-    // Enable compression for text-based messages
+    // 为文本消息启用压缩
     EnableCompression: true,
     
-    // Balance compression level between CPU usage and size
-    CompressionLevel: 6,  // Medium compression
+    // 在 CPU 与压缩率之间权衡
+    CompressionLevel: 6,  // 中等压缩
     
-    // Custom check for origin
+    // 自定义来源检查
     CheckOrigin: func(r *http.Request) bool {
         return isAllowedOrigin(r.Header.Get("Origin"))
     },
 }
 ```
 
-For high-throughput scenarios, message batching can significantly improve performance by reducing the number of network operations:
+在高吞吐场景中，消息批处理可显著减少网络操作次数以提升性能：
 
 ```go
 type MessageBatch struct {
@@ -610,7 +606,7 @@ func (s *service) batchProcessor() {
         SentAt:  time.Now(),
     }
 
-    // Collect messages until batch is full or timeout occurs
+    // 收集消息直到批次满或发生超时
     for {
         select {
         case msg := <-s.messageQueue:
@@ -632,7 +628,7 @@ func (s *service) batchProcessor() {
 }
 ```
 
-Memory usage can be optimized by implementing message pooling for frequently allocated message types:
+通过为高频分配的消息类型实现对象池可优化内存使用：
 
 ```go
 var messagePool = sync.Pool{
@@ -649,11 +645,11 @@ func acquireMessage() *Message {
 }
 
 func releaseMessage(m *Message) {
-    m.Reset()  // Clear message contents
+    m.Reset()  // 清空消息内容
     messagePool.Put(m)
 }
 ```
 
-These optimizations should be applied judiciously based on your specific use case. Always measure performance impact before and after implementing optimizations to ensure they provide meaningful benefits for your application.
+应根据具体场景谨慎应用这些优化。在实施前后均进行性能度量，确保其能为你的应用带来切实收益。
 
-For a complete working implementation demonstrating all these concepts, check out the [complete chatter service example](https://github.com/goadesign/examples/tree/master/streaming).
+有关涵盖这些概念的完整工作示例，请查看 [完整的 chatter 服务示例](https://github.com/goadesign/examples/tree/master/streaming)。

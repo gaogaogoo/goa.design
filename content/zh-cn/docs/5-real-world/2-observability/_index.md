@@ -1,66 +1,55 @@
----
-title: "Observability"
-description: "Understanding and implementing observability in Goa services"
+title: "可观测性"
+description: "理解并在 Goa 服务中实现可观测性"
 weight: 2
 ---
 
-Modern distributed systems are complex. When something goes wrong, traditional
-logging alone isn't enough to understand what happened. You need to see how
-requests flow through your system, measure performance, and monitor system
-health. This is where observability comes in.
+现代分布式系统十分复杂。当出现问题时，单靠传统日志不足以理解发生了什么。你需要看到请求如何在系统中流动、衡量性能并监控系统健康状况。这就是可观测性的意义所在。
 
-{{< alert title="Note" color="primary" >}}
-Goa services are standard HTTP or gRPC services, so you can use any
-observability stack you prefer. While this guide focuses on
-[Clue](https://github.com/goadesign/clue) (which Goa uses in generated examples
-and provides Goa-specific features), the principles apply to any observability
-solution.
+{{< alert title="注意" color="primary" >}}
+Goa 服务是标准的 HTTP 或 gRPC 服务，因此你可以使用任何你偏好的可观测性技术栈。尽管本指南聚焦于 [Clue](https://github.com/goadesign/clue)（Goa 在生成的示例中使用并提供 Goa 特定功能），其原则适用于任何可观测性方案。
 {{< /alert >}}
 
-## What is Observability?
+## 什么是可观测性？
 
-Observability is your ability to understand what's happening inside your system
-by looking at its outputs. In Goa, we achieve this through three main pillars:
+可观测性是指你通过观察系统的输出，理解系统内部正在发生什么的能力。在 Goa 中，我们通过三大支柱来实现这一点：
 
-1. **Distributed Tracing**: Following requests as they travel through your services
-2. **Metrics**: Measuring system behavior and performance
-3. **Logs**: Recording specific events and errors
+1. **分布式追踪**：随着请求穿越你的服务进行跟踪
+2. **指标**：衡量系统行为和性能
+3. **日志**：记录特定事件和错误
 
-## The Clue Package
+## Clue 包
 
-Clue is Goa's recommended observability package. It's built on top of
-[OpenTelemetry](https://opentelemetry.io), the industry standard for
-observability, and provides tight integration with Goa's generated code.
+Clue 是 Goa 推荐的可观测性包。它基于业界标准的 [OpenTelemetry](https://opentelemetry.io) 构建，并与 Goa 生成的代码紧密集成。
 
-Here's a simple example of what observability looks like in practice:
+下面是一个实践中可观测性的简单示例：
 
 ```go
 import (
-    "go.opentelemetry.io/otel"                // Standard OpenTelemetry
-    "go.opentelemetry.io/otel/attribute"      // Standard OpenTelemetry
-    "goa.design/clue/log"                     // Clue's logging package
+    "go.opentelemetry.io/otel"                // 标准 OpenTelemetry
+    "go.opentelemetry.io/otel/attribute"      // 标准 OpenTelemetry
+    "goa.design/clue/log"                     // Clue 的日志包
 )
 
 func (s *Service) CreateOrder(ctx context.Context, order *Order) error {
-    // Using standard OpenTelemetry API
+    // 使用标准 OpenTelemetry API
     ctx, span := otel.Tracer("service").Start(ctx, "create_order")
     defer span.End()
 
-    // Standard OpenTelemetry attributes
+    // 标准 OpenTelemetry 属性
     span.SetAttributes(
         attribute.String("order.id", order.ID),
         attribute.Float64("order.amount", order.Amount))
 
-    // Standard OpenTelemetry metrics
+    // 标准 OpenTelemetry 指标
     s.orderCounter.Add(ctx, 1,
         attribute.String("type", order.Type))
 
-    // Clue's structured logging (optional)
+    // Clue 的结构化日志（可选）
     log.Info(ctx, "processing order",
         log.KV{"order_id", order.ID})
 
     if err := s.processOrder(ctx, order); err != nil {
-        // Standard OpenTelemetry error recording
+        // 标准 OpenTelemetry 错误记录
         span.RecordError(err)
         return err
     }
@@ -69,66 +58,63 @@ func (s *Service) CreateOrder(ctx context.Context, order *Order) error {
 }
 ```
 
-Notice that most of the code uses standard OpenTelemetry packages
-(`go.opentelemetry.io/otel/*`). Only the logging uses Clue-specific code, and
-even that could be replaced with your preferred logging solution. This means you
-can:
-- Use any OpenTelemetry-compatible observability backend
-- Switch to a different logging library if needed
-- Keep your observability code portable
+请注意，大部分代码使用标准的 OpenTelemetry 包（`go.opentelemetry.io/otel/*`）。只有日志使用 Clue 特定的代码，而且也可以替换为你偏好的日志方案。这意味着你可以：
+- 使用任意与 OpenTelemetry 兼容的可观测性后端
+- 如有需要，切换为不同的日志库
+- 保持你的可观测性代码的可移植性
 
-## Why OpenTelemetry First?
+## 为什么优先使用 OpenTelemetry？
 
-Clue follows an OpenTelemetry-first approach. This means:
+Clue 采用 OpenTelemetry 优先的方式。这意味着：
 
-1. **Traces** are your primary debugging tool. They show you:
-   - The exact path of each request
-   - Where time is spent
-   - Which services are involved
-   - What errors occurred
+1. **追踪**是你的主要调试工具。它们展示：
+   - 每个请求的精确路径
+   - 时间消耗的位置
+   - 参与的服务
+   - 发生的错误
 
-2. **Metrics** help you monitor system health:
-   - Request rates and latencies
-   - Error rates
-   - Resource usage
-   - Business metrics
+2. **指标**帮助你监控系统健康：
+   - 请求速率与延迟
+   - 错误率
+   - 资源使用
+   - 业务指标
 
-3. **Logs** are used sparingly, mainly for:
-   - Fatal errors
-   - System startup/shutdown
-   - Debugging specific issues
+3. **日志**谨慎使用，主要用于：
+   - 致命错误
+   - 系统启动/关闭
+   - 调试特定问题
 
-This approach scales better than traditional logging because:
-- Traces provide context automatically
-- Metrics are more efficient than log parsing
-- Logs can focus on what matters
+这种方式比传统日志记录更易扩展，因为：
+- 追踪自动提供上下文
+- 指标比日志解析更高效
+- 日志可以聚焦于关键事项
 
-## Getting Started
+## 入门
 
-To add observability to your Goa service, you'll need to:
+要为你的 Goa 服务添加可观测性，你需要：
 
-1. **Set up Clue**: Configure OpenTelemetry with appropriate exporters
-2. **Add instrumentation**: Wrap your handlers and clients
-3. **Define metrics**: Track important system behaviors
-4. **Configure health checks**: Monitor service dependencies
-5. **Enable debugging**: Add tools for troubleshooting
+1. **设置 Clue**：配置带合适导出器的 OpenTelemetry
+2. **添加埋点**：包装你的处理器和客户端
+3. **定义指标**：跟踪重要的系统行为
+4. **配置健康检查**：监控服务依赖
+5. **启用调试**：添加故障排查工具
 
-The following guides will walk you through each step:
+以下指南会逐步引导你完成每一步：
 
-1. [Basic Setup](1-setup) - Configure Clue and OpenTelemetry
-2. [Tracing](2-tracing) - Implement distributed tracing
-3. [Metrics](3-metrics) - Add service metrics
-4. [Logging](4-logging) - Configure logging
-5. [Health Checks](5-health) - Add health monitoring
-6. [Debugging](6-debugging) - Enable debugging tools
+1. [基础设置](1-setup) - 配置 Clue 与 OpenTelemetry
+2. [追踪](2-tracing) - 实现分布式追踪
+3. [指标](3-metrics) - 添加服务指标
+4. [日志](4-logging) - 配置日志
+5. [健康检查](5-health) - 添加健康监控
+6. [调试](6-debugging) - 启用调试工具
 
-## Example Service
+## 示例服务
 
-Here's what a fully observable Goa service looks like in practice:
+下面是一个在实践中具备完整可观测性的 Goa 服务示例：
 
 ```go
 func main() {
-    // 1. Create logger with proper formatting
+    // 1. 创建具备适当格式的 logger
     format := log.FormatJSON
     if log.IsTerminal() {
         format = log.FormatTerminal
@@ -137,7 +123,7 @@ func main() {
         log.WithFormat(format),
         log.WithFunc(log.Span))
 
-    // 2. Configure OpenTelemetry with OTLP exporters
+    // 2. 使用 OTLP 导出器配置 OpenTelemetry
     spanExporter, err := otlptracegrpc.New(ctx,
         otlptracegrpc.WithEndpoint(*coladdr),
         otlptracegrpc.WithTLSCredentials(insecure.NewCredentials()))
@@ -151,7 +137,7 @@ func main() {
         log.Fatalf(ctx, err, "failed to initialize metrics")
     }
 
-    // 3. Initialize Clue with OpenTelemetry
+    // 3. 使用 OpenTelemetry 初始化 Clue
     cfg, err := clue.NewConfig(ctx,
         genservice.ServiceName,
         genservice.APIVersion,
@@ -159,30 +145,30 @@ func main() {
         spanExporter)
     clue.ConfigureOpenTelemetry(ctx, cfg)
 
-    // 4. Create service with middleware
+    // 4. 使用中间件创建服务
     svc := front.New(fc, lc)
     endpoints := genservice.NewEndpoints(svc)
-    endpoints.Use(debug.LogPayloads())  // Debug logging
-    endpoints.Use(log.Endpoint)         // Request logging
+    endpoints.Use(debug.LogPayloads())  // 调试日志
+    endpoints.Use(log.Endpoint)         // 请求日志
     endpoints.Use(middleware.ErrorReporter())
 
-    // 5. Set up HTTP handlers with observability
+    // 5. 配置带可观测性的 HTTP 处理器
     mux := goahttp.NewMuxer()
-    debug.MountDebugLogEnabler(debug.Adapt(mux))  // Dynamic log level control
-    debug.MountPprofHandlers(debug.Adapt(mux))    // Go profiling endpoints
+    debug.MountDebugLogEnabler(debug.Adapt(mux))  // 动态日志级别控制
+    debug.MountPprofHandlers(debug.Adapt(mux))    // Go 性能分析端点
     
-    // Add middleware in correct order:
+    // 按正确顺序添加中间件：
     mux.Use(otelhttp.NewMiddleware(serviceName)) // 3. OpenTelemetry
-    mux.Use(debug.HTTP())                        // 2. Debug endpoints
-    mux.Use(log.HTTP(ctx))                       // 1. Request logging
+    mux.Use(debug.HTTP())                        // 2. 调试端点
+    mux.Use(log.HTTP(ctx))                       // 1. 请求日志
 
-    // 6. Mount health checks on separate port
+    // 6. 在独立端口挂载健康检查
     check := health.Handler(health.NewChecker(
         health.NewPinger("locator", *locatorHealthAddr),
         health.NewPinger("forecaster", *forecasterHealthAddr)))
     http.Handle("/healthz", log.HTTP(ctx)(check))
 
-    // 7. Start servers with graceful shutdown
+    // 7. 启动服务器并支持优雅关闭
     var wg sync.WaitGroup
     wg.Add(1)
     go func() {
@@ -193,7 +179,7 @@ func main() {
         }
     }()
 
-    // Handle shutdown
+    // 处理关闭
     <-ctx.Done()
     if err := server.Shutdown(context.Background()); err != nil {
         log.Errorf(ctx, err, "shutdown error")
@@ -202,21 +188,11 @@ func main() {
 }
 ```
 
-This service showcases several important observability features that help
-monitor and debug the application in production. It implements structured
-logging that propagates context through the service, allowing requests to be
-traced across components. The service integrates OpenTelemetry for distributed
-tracing and metrics collection, providing insights into performance and
-behavior. Health check endpoints monitor the status of dependencies like the
-locator and forecaster services. Debug endpoints enable profiling of the running
-service to identify performance bottlenecks. The service also supports dynamic
-log level control to adjust verbosity at runtime without restarts. Finally, it
-implements graceful shutdown handling to properly clean up resources and
-complete in-flight requests when stopping the service.
+该服务展示了多项重要的可观测性能力，帮助在生产环境中监控和调试应用。它实现了可携带上下文的结构化日志，使请求能够在组件间被追踪。服务集成了 OpenTelemetry 用于分布式追踪与指标采集，提供有关性能与行为的洞察。健康检查端点监控定位器与预报器等依赖的状态；调试端点则支持对运行中的服务进行性能剖析以识别瓶颈。服务还支持动态日志级别控制，可在运行时无需重启调整详细程度。最后，它实现了优雅关闭，在停止服务时妥善清理资源并完成正在处理的请求。
 
-## Learn More
+## 了解更多
 
-- [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
-- [Clue GitHub Repository](https://github.com/goadesign/clue)
-- [Clue Weather Example](https://github.com/goadesign/clue/tree/main/example/weather)
+- [OpenTelemetry 文档](https://opentelemetry.io/docs/)
+- [Clue GitHub 仓库](https://github.com/goadesign/clue)
+- [Clue Weather 示例](https://github.com/goadesign/clue/tree/main/example/weather)
 

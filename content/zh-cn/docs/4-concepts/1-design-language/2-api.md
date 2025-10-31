@@ -1,27 +1,27 @@
 ---
-title: "API Definition"
+title: "API 定义"
 linkTitle: "API"
 weight: 2
 description: >
-  Define your API's global properties using Goa's API DSL. Configure metadata, documentation, servers, and global settings.
+  使用 Goa 的 API DSL 定义服务的全局属性，配置元数据、文档、服务器以及全局设置。
 ---
 
-## API Definition
+## API 定义
 
-The `API` function is a top-level DSL that defines the global properties of your service. It acts as the root of your design and establishes the foundation for all other components. Each design package can contain only one API declaration, which serves as the entry point for your service definition.
+`API` 函数是顶层 DSL，用于定义服务的全局属性。它是设计的根，奠定其他所有组件的基础。每个设计包只能包含一个 API 声明，作为服务定义的入口。
 
-### Purpose and Usage
+### 目的与用法
 
-The API definition serves several important purposes:
-- Provides metadata for API documentation
-- Configures server endpoints and variables
-- Establishes global settings for all services
-- Defines documentation and licensing information
-- Sets up contact and support details
+API 定义的主要作用包括：
+- 为 API 文档提供元数据
+- 配置服务器端点与变量
+- 为所有服务建立全局设置
+- 定义文档与许可信息
+- 设置联系与支持信息
 
-### Basic Structure
+### 基本结构
 
-Here's a minimal API definition:
+下面是一个最小化的 API 定义：
 
 ```go
 var _ = API("calculator", func() {
@@ -31,15 +31,15 @@ var _ = API("calculator", func() {
 })
 ```
 
-This creates an API named "calculator" with basic documentation. The API name should be a valid Go identifier as it's used in generated code.
+这将创建一个名为 "calculator" 的 API，并带有基础文档。API 名称应为有效的 Go 标识符，因为它会用于生成的代码中。
 
-### Complete Example
+### 完整示例
 
-Here's a comprehensive example showing all available API options with detailed explanations:
+下面是一个全面的示例，展示了所有可用的 API 选项以及详细说明：
 
 ```go
 var _ = API("bookstore", func() {
-    // Basic API information - used in OpenAPI documentation
+    // 基础 API 信息 —— 用于 OpenAPI 文档
     Title("Bookstore API")
     Description(`A modern bookstore management API.
     
@@ -50,23 +50,23 @@ This API provides endpoints for:
 - Analytics and reporting`)
     Version("2.0.0")
     
-    // Terms of service - legal requirements and usage terms
+    // 服务条款 —— 法律要求与使用条款
     TermsOfService("https://example.com/terms")
     
-    // Contact information - who to reach for support
+    // 联系方式 —— 支持渠道
     Contact(func() {
         Name("API Support")
         Email("support@example.com")
         URL("https://example.com/support")
     })
     
-    // License information - how the API can be used
+    // 许可信息 —— API 的使用许可
     License(func() {
         Name("Apache 2.0")
         URL("https://www.apache.org/licenses/LICENSE-2.0.html")
     })
     
-    // Documentation - detailed guides and references
+    // 文档 —— 详细指南与参考
     Docs(func() {
         Description(`Comprehensive API documentation including:
 - Getting started guides
@@ -77,18 +77,18 @@ This API provides endpoints for:
         URL("https://example.com/docs")
     })
     
-    // Server definitions - where the API can be accessed
+    // 服务器定义 —— API 的访问位置
     Server("production", func() {
         Description("Production server")
         
-        // Multiple hosts with variables
+        // 多主机与变量
         Host("production", func() {
             Description("Production host")
-            // Variables in URIs are replaced at runtime
+            // URI 中的变量在运行时替换
             URI("https://{version}.api.example.com")
             URI("grpcs://{version}.grpc.example.com")
             
-            // Define the version variable
+            // 定义版本变量
             Variable("version", String, "API version", func() {
                 Default("v2")
                 Enum("v1", "v2")
@@ -96,12 +96,12 @@ This API provides endpoints for:
         })
     })
     
-    // Development server for testing
+    // 开发服务器 —— 用于测试
     Server("development", func() {
         Description("Development server")
         
         Host("localhost", func() {
-            // Local development endpoints
+            // 本地开发端点
             URI("http://localhost:8000")
             URI("grpc://localhost:8080")
         })
@@ -109,17 +109,17 @@ This API provides endpoints for:
 })
 ```
 
-### API Properties in Detail
+### API 属性详解
 
-#### Basic Metadata
-These properties are essential for API documentation and discovery:
+#### 基础元数据
+这些属性是 API 文档与发现的核心：
 
-- `Title`: A short, descriptive name for your API
-- `Description`: A detailed explanation of what your API does
-- `Version`: The API version, typically following semantic versioning
-- `TermsOfService`: Link to your terms of service document
+- `Title`：API 的简短描述性名称
+- `Description`：API 的详细说明
+- `Version`：API 版本，通常遵循语义化版本
+- `TermsOfService`：服务条款链接
 
-Example with markdown support:
+支持 Markdown 的示例：
 ```go
 Title("Order Management API")
 Description(`
@@ -137,8 +137,8 @@ This API allows you to:
 `)
 ```
 
-#### Contact Information
-Contact information helps API consumers reach out for support:
+#### 联系信息
+联系方式帮助 API 使用者在需要支持时进行沟通：
 
 ```go
 Contact(func() {
@@ -148,10 +148,10 @@ Contact(func() {
 })
 ```
 
-This information appears in the API documentation and helps users get assistance when needed.
+此信息会显示在 API 文档中，帮助用户在需要时获得协助。
 
-#### License Information
-Specify how your API can be used:
+#### 许可信息
+指定你的 API 如何被使用：
 
 ```go
 License(func() {
@@ -160,10 +160,10 @@ License(func() {
 })
 ```
 
-The license information is crucial for users to understand usage rights and restrictions.
+许可信息对理解使用权与限制至关重要。
 
-#### Documentation Links
-Provide additional documentation resources:
+#### 文档链接
+提供额外的文档资源：
 
 ```go
 Docs(func() {
@@ -176,28 +176,28 @@ Docs(func() {
 })
 ```
 
-### Server Configuration
+### 服务器配置
 
-Servers define the endpoints where your API can be accessed. You can define multiple servers for different environments:
+服务器定义了可以访问 API 的端点。你可以为不同环境定义多个服务器：
 
 ```go
 Server("main", func() {
     Description("Main API server")
     
-    // Production host
+    // 生产主机
     Host("production", func() {
         Description("Production endpoints")
-        // Support both HTTP and gRPC
+        // 同时支持 HTTP 与 gRPC
         URI("https://api.example.com")
         URI("grpcs://grpc.example.com")
     })
     
-    // Regional host with variables
+    // 带变量的区域主机
     Host("regional", func() {
         Description("Regional endpoints")
         URI("https://{region}.api.example.com")
         
-        // Define the region variable
+        // 定义 region 变量
         Variable("region", String, "Geographic region", func() {
             Description("AWS region for the API endpoint")
             Default("us-east")
@@ -207,61 +207,61 @@ Server("main", func() {
 })
 ```
 
-Variables in URIs allow for flexible configuration and can be used to:
-- Support multiple regions
-- Handle different API versions
-- Configure environment-specific settings
-- Manage multiple tenants
+URI 中的变量使配置更灵活，常见用途包括：
+- 支持多区域
+- 多版本 API
+- 环境差异化配置
+- 多租户管理
 
-### Best Practices
+### 最佳实践
 
-{{< alert title="API Design Guidelines" color="primary" >}}
-**Documentation**
-- Provide clear, concise titles and descriptions
-- Use markdown formatting for rich documentation
-- Include comprehensive contact information
-- Link to detailed external documentation
-- Specify license and terms of service clearly
+{{< alert title="API 设计指引" color="primary" >}}
+文档
+- 提供清晰、简洁的标题与描述
+- 使用 Markdown 进行富文档编写
+- 补充完善的联系信息
+- 链接到更详细的外部文档
+- 明确许可与服务条款
 
-**Versioning**
-- Use semantic versioning (MAJOR.MINOR.PATCH)
-- Include version in server URLs for API versioning
-- Plan for version transitions and backwards compatibility
-- Document breaking changes between versions
+版本化
+- 采用语义化版本（MAJOR.MINOR.PATCH）
+- 在服务器 URL 中包含版本信息
+- 提前规划版本迁移与向后兼容
+- 记录版本间的不兼容变更
 
-**Server Configuration**
-- Define all production and development servers
-- Use variables for flexible configuration
-- Include both HTTP and gRPC endpoints when needed
-- Document server environments and their purposes
-- Provide sensible defaults for variables
-- Consider regional and scaling requirements
+服务器配置
+- 定义所有生产与开发服务器
+- 使用变量提升配置灵活性
+- 需要时同时提供 HTTP 与 gRPC 端点
+- 说明各环境与其用途
+- 为变量提供合理默认值
+- 考量区域与扩展性需求
 
-**General Tips**
-- Keep descriptions focused and relevant
-- Use consistent naming conventions
-- Plan for future expansion
-- Consider security implications
-- Document rate limits and usage quotas
+通用建议
+- 描述聚焦且相关
+- 命名一致
+- 预留扩展空间
+- 注重安全影响
+- 记录频控与配额
 {{< /alert >}}
 
-### API-Level Errors
+### API 级错误
 
-The API DSL allows you to define errors at the API level that can be reused across all services and methods. This promotes consistency in error handling and reduces duplication in your design.
+API DSL 允许在 API 层定义可在所有服务与方法间复用的错误。这能促进错误处理的一致性并减少设计中的重复。
 
-#### Purpose and Benefits
+#### 目的与收益
 
-Defining errors at the API level establishes a consistent vocabulary and structure that can be reused throughout your services. This centralized approach ensures uniform error handling while simplifying documentation and transport mappings. Rather than defining similar errors multiple times, you can reference these shared definitions wherever needed, promoting consistency and maintainability across your entire API.
+在 API 层定义错误可以建立一致的术语与结构，在各处复用。集中式的方式确保统一的错误处理，同时简化文档与传输映射。与其在多个地方重复定义相似错误，不如按需引用共享定义，从而在整个 API 中提升一致性与可维护性。
 
-#### How Error Definition Works
+#### 错误定义如何工作
 
-When you define an error at the API level, you establish:
-1. A unique error identifier
-2. The error's data structure (type)
-3. Documentation and description
-4. Optional transport-specific behavior
+当你在 API 层定义错误时，需要确定：
+1. 唯一的错误标识符
+2. 错误的数据结构（类型）
+3. 文档与描述
+4. 可选的传输层行为
 
-Here's a simple example, given the following API definition:
+示例（基于以下 API 定义）：
 ```go
 var _ = API("bookstore", func() {
     Error("unauthorized", ErrorResult, "Authentication failed")
@@ -274,62 +274,62 @@ var _ = API("bookstore", func() {
 })
 ```
 
-Services and methods can reference API-level errors by name:
+服务与方法可以通过名称引用 API 级错误：
 
 ```go
 var _ = Service("billing", func() {
-    Error("unauthorized") // No need to specify the error type, description or transport mappings again
+    Error("unauthorized") // 无需再次指定类型、描述或传输映射
 })
 ```
 
-#### Error Inheritance
+#### 错误的继承
 
-Services and methods can reference API-level errors by name. When they do:
-- They inherit all properties of the API-level error
-- They can add transport-specific mappings
-- They cannot modify the error's structure
-- They can provide additional documentation
+服务与方法按名称引用 API 级错误时：
+- 继承该错误的所有属性
+- 可以添加传输层映射
+- 不能修改错误结构
+- 可以补充上下文相关的文档
 
-This inheritance model ensures consistency while allowing flexibility in how errors are used.
+这种继承模型在确保一致性的同时，允许在使用方式上保持灵活。
 
-#### Default Error Type
+#### 默认错误类型
 
-If you don't specify a type for an error, Goa uses its built-in `ErrorResult` type. This type includes:
-- An error message
-- An error ID
-- Optional temporary/timeout flags
-- Optional stack of error causes
+如果未显式指定错误类型，Goa 会使用内置的 `ErrorResult` 类型。该类型包含：
+- 错误消息
+- 错误 ID
+- 可选的临时/超时标记
+- 可选的错误原因栈
 
-You can use this default type for simple errors or define custom types for more complex error scenarios.
+对于简单错误你可以直接使用该默认类型；而在更复杂的场景中可定义自定义类型。
 
-#### Transport Mappings
+#### 传输映射
 
-API-level errors can define how they should be represented in different transport protocols. For example:
-- HTTP status codes and headers
-- gRPC status codes
-- Custom error serialization
+API 级错误可以定义在不同传输协议中的表现方式。例如：
+- HTTP 状态码与响应头
+- gRPC 状态码
+- 自定义错误序列化
 
-These mappings are inherited when the error is used in services and methods.
+当错误在服务与方法中被使用时，这些映射会被继承。
 
-#### Best Practices for Error Design
+#### 错误设计最佳实践
 
-{{< alert title="Error Design Guidelines" color="primary" >}}
-**Error Organization**
-- Define common, reusable errors at the API level
-- Use clear, descriptive error names
+{{< alert title="错误设计指引" color="primary" >}}
+错误组织
+- 在 API 层定义通用且可复用的错误
+- 使用清晰、可表达含义的错误名
 
-**Error Usage**
-- Reference API errors instead of redefining them
-- Add context-specific documentation when reusing errors
+错误用法
+- 优先引用 API 层错误而不是重复定义
+- 复用错误时补充上下文描述
 {{< /alert >}}
 
-#### Common Patterns
+#### 常见模式
 
-Some common patterns for API-level errors include:
-1. Authentication/authorization errors
-2. Resource not found errors
-3. Validation errors (on top of the validation rules defined in the design)
-4. Rate limiting errors
-5. Server-side errors
+常见的 API 级错误模式包括：
+1. 认证/鉴权错误
+2. 资源未找到
+3. 校验错误（在设计中已有的校验规则之上）
+4. 频率限制错误
+5. 服务端错误
 
-By defining these common patterns at the API level, you ensure consistent error handling throughout your services.
+通过在 API 层定义这些通用模式，可确保你的服务在错误处理上的一致性。

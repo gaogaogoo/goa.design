@@ -1,15 +1,13 @@
 ---
-title: "Streaming"
+title: "流式处理（Streaming）"
 linkTitle: "Streaming"
 weight: 4
-description: "Learn to implement streaming endpoints in Goa for both HTTP and gRPC transports, covering server-side streaming, client-side streaming, and bidirectional streaming patterns."
+description: "学习在 Goa 中为 HTTP 与 gRPC 传输实现流式端点，涵盖服务端流、客户端流与双向流等模式。"
 ---
 
-This section explores how to implement streaming capabilities in your Goa
-services. You'll learn about different streaming patterns, their use cases, and
-how to implement them effectively.
+本节介绍如何在 Goa 服务中实现流式能力。您将了解不同的流式模式、适用场景以及有效的实现方式。
 
-{{< alert title="See also" color="info" >}}
-For a comprehensive matrix of allowed transport and streaming combinations across HTTP, JSON‑RPC, and gRPC, see the
-[Transports](../../4-concepts/6-transports) page.
+{{< alert title="相关内容" color="info" >}}
+关于 HTTP、JSON‑RPC 与 gRPC 中传输与流式组合的完整矩阵，请参阅
+[Transports](../../4-concepts/6-transports) 页面。
 {{< /alert >}}

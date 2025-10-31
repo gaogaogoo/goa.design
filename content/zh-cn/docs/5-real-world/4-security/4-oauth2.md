@@ -1,65 +1,53 @@
 ---
-title: OAuth2 Authentication
-description: Learn how to implement OAuth2 Authentication in your Goa API
+title: OAuth2 认证
+description: 学习如何在你的 Goa API 中实现 OAuth2 认证
 weight: 4
 ---
 
-OAuth2 is a widely-used protocol that enables applications to securely access data on 
-behalf of users without needing their passwords. Think of it like a hotel key card 
-system - guests get temporary access to specific areas without having the master key.
+OAuth2 是一种广泛使用的协议，使应用程序能够在无需用户密码的情况下，代表用户安全地访问数据。把它想象成酒店房卡系统——客人无需主钥匙，就能在一段时间内进入特定区域。
 
-Goa provides two ways to work with OAuth2:
+Goa 提供两种使用 OAuth2 的方式：
 
-1. **Implementing an OAuth2 Provider**: Create your own authorization server that 
-   issues tokens to client applications. This is like being the hotel - you issue and 
-   manage the key cards.
+1. **实现一个 OAuth2 提供者**：创建你自己的授权服务器，向客户端应用发放令牌。这就像当酒店本身——由你来发放并管理房卡。
 
-2. **Using OAuth2 to Secure Services**: Protect your API endpoints using OAuth2 
-   tokens, typically from an external provider like Google or your own OAuth2 
-   provider. This is like being a shop in the hotel that accepts the hotel's key 
-   cards.
+2. **使用 OAuth2 保护服务**：使用 OAuth2 令牌来保护你的 API 端点，令牌通常来自外部提供者（例如 Google）或你自己的 OAuth2 提供者。这就像酒店里的商店，接受酒店发放的房卡。
 
-Let's explore both approaches in detail.
+让我们详细探讨这两种方式。
 
-## Part 1: Implementing an OAuth2 Provider
+## 第一部分：实现 OAuth2 提供者
 
-If you want to create your own OAuth2 authorization server (like Google's or 
-GitHub's), Goa provides a complete implementation through its 
-[goadesign/oauth2](https://github.com/goadesign/oauth2) package. This implementation 
-focuses on the Authorization Code flow, which is the most secure and widely-used 
-OAuth2 flow.
+如果你想创建自己的 OAuth2 授权服务器（类似 Google 或 GitHub），Goa 通过其 
+[goadesign/oauth2](https://github.com/goadesign/oauth2) 包提供了一套完整实现。该实现聚焦于授权码（Authorization Code）流程，这是最安全、最广泛使用的 OAuth2 流程。
 
-### Understanding the Provider Flow
+### 理解提供者流程
 
-When you implement an OAuth2 provider, you're creating a system that handles three 
-main types of requests:
+当你实现一个 OAuth2 提供者时，你要构建一个系统来处理三类主要请求：
 
-1. **Authorization Request** (from the user)
-   - Example: User clicks "Login with MyService" on a client app
-   - Your provider shows a permission screen
-   - After approval, you send an authorization code to the client app
+1. **授权请求**（来自用户）
+   - 示例：用户在客户端应用上点击“使用 MyService 登录”
+   - 你的提供者显示权限确认页面
+   - 用户同意后，你向客户端应用发送授权码
 
-2. **Token Exchange** (from the client app)
-   - Client app sends back the authorization code
-   - Your provider validates it and returns access/refresh tokens
+2. **令牌交换**（来自客户端应用）
+   - 客户端应用回传授权码
+   - 你的提供者验证后返回访问令牌/刷新令牌
 
-3. **Token Refresh** (from the client app)
-   - Client app sends a refresh token when access token expires
-   - Your provider issues a new access token
+3. **刷新令牌**（来自客户端应用）
+   - 当访问令牌过期时，客户端应用发送刷新令牌
+   - 你的提供者签发新的访问令牌
 
-### Implementing the Provider
+### 实现提供者
 
-#### Step 1: Define the Provider API
+#### 步骤 1：定义提供者 API
 
-First, create the OAuth2 provider endpoints in your design. This code sets up the 
-basic structure of your OAuth2 provider service:
+首先，在设计中创建 OAuth2 提供者端点。下面的代码设置了 OAuth2 提供者服务的基本结构：
 
 ```go
 package design
 
 import (
     . "goa.design/goa/v3/dsl"
-    . "github.com/goadesign/oauth2"  // Import the OAuth2 provider package
+    . "github.com/goadesign/oauth2"  // 引入 OAuth2 提供者包
 )
 
 var _ = API("oauth2_provider", func() {
@@ -70,54 +58,52 @@ var _ = API("oauth2_provider", func() {
 var OAuth2Provider = OAuth2("/oauth2/authorize", "/oauth2/token", func() {
     Description("OAuth2 provider endpoints")
     
-    // Configure the authorization code flow
+    // 配置授权码流程
     AuthorizationCodeFlow("/auth", "/token", "/refresh")
     
-    // Define available scopes
+    // 定义可用的作用域
     Scope("api:read", "Read access to API")
     Scope("api:write", "Write access to API")
 })
 ```
 
-This design code:
-- Creates a new API specifically for OAuth2 provider functionality
-- Defines two main endpoints: "/oauth2/authorize" for user authorization and 
-  "/oauth2/token" for token management
-- Sets up the authorization code flow with its required endpoints
-- Defines two basic scopes that clients can request
+此设计代码：
+- 创建一个专门用于 OAuth2 提供者功能的 API
+- 定义两个主要端点：用户授权的 "/oauth2/authorize" 和令牌管理的 "/oauth2/token"
+- 设置授权码流程及其所需的端点
+- 定义两个客户端可申请的基本作用域
 
-#### Step 2: Implement the Provider Interface
+#### 步骤 2：实现 Provider 接口
 
-The Provider interface is the heart of your OAuth2 implementation. It defines the 
-core methods that handle the OAuth2 flow:
+Provider 接口是 OAuth2 实现的核心。它定义了处理 OAuth2 流程的关键方法：
 
 ```go
 type Provider interface {
-    // Authorize handles the initial permission request
+    // Authorize 处理初始的权限请求
     Authorize(clientID, scope, redirectURI string) (code string, err error)
 
-    // Exchange trades authorization code for tokens
+    // Exchange 用授权码换取令牌
     Exchange(clientID, code, redirectURI string) (refreshToken, accessToken string, 
         expiresIn int, err error)
 
-    // Refresh provides new access tokens
+    // Refresh 提供新的访问令牌
     Refresh(refreshToken, scope string) (newRefreshToken, accessToken string, 
         expiresIn int, err error)
 
-    // Authenticate verifies client credentials
+    // Authenticate 验证客户端凭据
     Authenticate(clientID, clientSecret string) error
 }
 ```
 
-Each method serves a specific purpose:
-- `Authorize`: Called when a user approves access, generates a temporary code
-- `Exchange`: Converts the temporary code into access and refresh tokens
-- `Refresh`: Issues new access tokens when old ones expire
-- `Authenticate`: Validates client credentials before any token operations
+每个方法各有其职责：
+- `Authorize`：在用户批准访问时调用，生成一个临时代码
+- `Exchange`：将临时代码转换为访问令牌和刷新令牌
+- `Refresh`：在旧访问令牌过期时签发新的访问令牌
+- `Authenticate`：在任何令牌操作之前验证客户端凭据
 
-#### Step 3: Create the Provider Controller
+#### 步骤 3：创建提供者控制器
 
-The controller connects your HTTP endpoints to your Provider implementation:
+控制器把你的 HTTP 端点与 Provider 实现连接起来：
 
 ```go
 func NewOAuth2ProviderController(service *goa.Service, provider oauth2.Provider) *OAuth2ProviderController {
@@ -127,20 +113,19 @@ func NewOAuth2ProviderController(service *goa.Service, provider oauth2.Provider)
 }
 ```
 
-This controller:
-- Takes your Provider implementation as input
-- Handles all HTTP routing and request processing
-- Manages error responses and status codes
-- Ensures OAuth2 protocol compliance
+该控制器：
+- 接受你的 Provider 实现作为输入
+- 处理所有 HTTP 路由与请求
+- 管理错误响应与状态码
+- 确保遵循 OAuth2 协议
 
-### Provider Security Considerations
+### 提供者的安全考量
 
-When implementing an OAuth2 provider, you need robust security measures. Here are key 
-components with their implementations:
+在实现 OAuth2 提供者时，需要完善的安全措施。以下是关键组件及其实现：
 
-#### Token Management
+#### 令牌管理
 
-The TokenStore provides secure storage and management of access and refresh tokens:
+TokenStore 提供访问令牌与刷新令牌的安全存储与管理：
 
 ```go
 type TokenStore struct {
@@ -161,42 +146,41 @@ func (s *TokenStore) StoreToken(info *TokenInfo) error {
 }
 ```
 
-This implementation:
-- Uses separate maps for access and refresh tokens
-- Implements thread-safe token storage with a mutex
-- Handles both token types in a single operation
-- Provides atomic updates to prevent race conditions
+该实现：
+- 为访问令牌与刷新令牌分别使用独立的映射
+- 使用互斥锁实现线程安全的令牌存储
+- 在一次操作中同时处理两类令牌
+- 提供原子更新以防止竞态条件
 
-#### Client Management
+#### 客户端管理
 
-The Client struct manages information about registered OAuth2 clients:
+Client 结构体管理已注册 OAuth2 客户端的信息：
 
 ```go
 type Client struct {
-    ID          string   // Unique identifier for the client
-    Secret      string   // Client's secret key for authentication
-    RedirectURI string   // Authorized redirect URI
-    Scopes      []string // Allowed scopes for this client
-    Type        string   // "confidential" or "public"
+    ID          string   // 客户端的唯一标识符
+    Secret      string   // 用于认证的客户端密钥
+    RedirectURI string   // 授权的重定向 URI
+    Scopes      []string // 该客户端允许的作用域
+    Type        string   // "confidential" 或 "public"
 }
 ```
 
-This structure:
-- Stores essential client credentials
-- Tracks allowed redirect URIs to prevent phishing
-- Maintains a list of permitted scopes
-- Distinguishes between confidential (server-side) and public (client-side) apps
+该结构：
+- 存储必要的客户端凭据
+- 追踪允许的重定向 URI 以防止钓鱼
+- 维护允许的作用域列表
+- 区分机密（服务端）与公开（客户端）应用
 
-## Part 2: Using OAuth2 to Secure Your Services
+## 第二部分：使用 OAuth2 保护你的服务
 
-If you want to protect your API endpoints using OAuth2 (either your own provider or 
-an external one like Google), Goa makes this straightforward.
+如果你希望使用 OAuth2 来保护 API 端点（无论是你自己的提供者还是外部提供者如 Google），Goa 能让这一过程变得简单。
 
-### Securing Your API
+### 保护你的 API
 
-#### Step 1: Define the Security Scheme
+#### 步骤 1：定义安全方案
 
-This code tells Goa how to protect your API with OAuth2:
+如下代码告诉 Goa 如何使用 OAuth2 保护你的 API：
 
 ```go
 package design
@@ -208,29 +192,20 @@ import (
 var OAuth2Auth = OAuth2Security("oauth2", func() {
     Description("OAuth2 authentication")
     
-    // Define which OAuth2 flows you support
+    // 定义你支持的 OAuth2 流程
     AuthorizationCodeFlow("/auth", "/token", "/refresh")
     
-    // Define required scopes
+    // 定义所需的作用域
     Scope("api:read", "Read access to API")
     Scope("api:write", "Write access to API")
 })
 ```
 
-The security scheme above establishes the core OAuth2 configuration for your
-API. By naming it "oauth2", you create a clear identifier that can be referenced
-throughout your API design. The scheme specifies your supported OAuth2 flow,
-which in this case is the Authorization Code flow - one of the most secure
-options available. It also defines the available scopes that clients can request
-when accessing your API, allowing for granular access control. Finally, it
-configures the necessary authentication endpoints that clients will interact
-with during the OAuth2 flow, including authorization, token exchange, and
-refresh token endpoints. This comprehensive setup provides everything needed to
-implement OAuth2 security in your Goa API.
+上述安全方案建立了你 API 的核心 OAuth2 配置。通过将其命名为 "oauth2"，你创建了一个可在整个 API 设计中引用的清晰标识符。该方案指定了你支持的 OAuth2 流程，此处为授权码流程——这是最安全的选项之一。同时，它定义了客户端在访问你的 API 时可申请的作用域，从而实现细粒度的访问控制。最后，它配置了客户端在 OAuth2 流程中会交互的必要认证端点，包括授权、令牌交换以及刷新令牌端点。该完整设置提供了在 Goa API 中实现 OAuth2 安全所需的一切。
 
-#### Step 2: Protect Your Endpoints
+#### 步骤 2：保护你的端点
 
-Here's how to apply OAuth2 security to your API endpoints:
+如下展示了如何将 OAuth2 安全应用到你的 API 端点：
 
 ```go
 var _ = Service("secure_api", func() {
@@ -239,7 +214,7 @@ var _ = Service("secure_api", func() {
     Method("getData", func() {
         Description("Get protected data")
         
-        // Require OAuth2 with specific scope
+        // 要求具备特定作用域的 OAuth2
         Security(OAuth2Auth, func() {
             Scope("api:read")
         })
@@ -258,31 +233,23 @@ var _ = Service("secure_api", func() {
 })
 ```
 
-The endpoint definition above demonstrates how to create a secure API endpoint
-using OAuth2 authentication. When a client makes a request to this endpoint,
-they must provide a valid OAuth2 access token that includes the "api:read"
-scope. The endpoint configuration specifies where this access token should be
-included in the request, typically in the Authorization header. To handle both
-successful and failed authentication attempts, the endpoint is set up with
-appropriate HTTP response codes - returning 200 OK when authentication succeeds
-and 401 Unauthorized when it fails. This comprehensive setup ensures that your
-API endpoint is properly protected while following OAuth2 best practices.
+上述端点定义展示了如何使用 OAuth2 认证创建一个安全的 API 端点。当客户端请求该端点时，必须提供一个包含 "api:read" 作用域的有效 OAuth2 访问令牌。端点配置指定了访问令牌在请求中的位置，通常放在 Authorization 头中。为同时处理认证成功与失败的情况，端点设置了相应的 HTTP 响应码——认证成功返回 200 OK，失败返回 401 Unauthorized。该完整配置确保你的 API 端点在遵循 OAuth2 最佳实践的同时得到妥善保护。
 
-#### Step 3: Implement Token Validation
+#### 步骤 3：实现令牌验证
 
-This security handler validates incoming OAuth2 tokens:
+以下安全处理器用于验证传入的 OAuth2 令牌：
 
 ```go
 func (s *service) OAuth2Auth(ctx context.Context, token string, 
     scheme *security.OAuth2Scheme) (context.Context, error) {
     
-    // Validate token with your OAuth2 provider
+    // 使用你的 OAuth2 提供者验证令牌
     claims, err := s.validateToken(token)
     if err != nil {
         return ctx, oauth2.Unauthorized("invalid token")
     }
     
-    // Check required scopes
+    // 检查所需的作用域
     if !hasRequiredScopes(claims.Scopes, scheme.RequiredScopes) {
         return ctx, oauth2.Unauthorized("insufficient scopes")
     }
@@ -291,54 +258,42 @@ func (s *service) OAuth2Auth(ctx context.Context, token string,
 }
 ```
 
-When a request comes in, this security handler first extracts the OAuth2 token
-from the request. It then validates this token by making a call to your OAuth2
-provider to ensure the token is legitimate and hasn't expired.
+当请求到达时，安全处理器首先从请求中提取 OAuth2 令牌。随后它通过调用你的 OAuth2 提供者验证该令牌是否合法且未过期。
 
-Once validated, the handler verifies that the token includes all the required
-scopes for the requested operation. For example, if an endpoint requires the
-"api:read" scope, the handler checks that this scope is present in the token's
-claims.
+一旦验证成功，处理器会检查令牌是否包含执行该操作所需的全部作用域。例如，如果一个端点要求 "api:read" 作用域，处理器会检查该作用域是否存在于令牌的声明中。
 
-If any validation fails - whether the token is invalid, expired, or missing
-required scopes - the handler returns an appropriate OAuth2 error response. This
-helps client applications understand exactly what went wrong.
+如果任何验证失败——无论是令牌无效、过期，还是缺少所需作用域——处理器都会返回相应的 OAuth2 错误响应。这有助于客户端应用准确理解问题所在。
 
-For successful requests, the handler adds the validated claims to the request
-context. This makes the claims available to your endpoint handlers, allowing
-them to access information about the authenticated user and their permissions.
+对于成功的请求，处理器会将已验证的声明加入请求上下文，使端点处理函数可以访问已认证用户及其权限的信息。
 
-## Best Practices
+## 最佳实践
 
-Whether you're implementing a provider or securing a service, follow these guidelines:
+无论你是在实现提供者还是在保护服务，请遵循以下准则：
 
-1. **Token Security**
-   - Use short-lived access tokens
-   - Implement token rotation
-   - Securely store tokens
+1. **令牌安全**
+   - 使用短时有效的访问令牌
+   - 实现令牌轮换
+   - 安全存储令牌
 
-2. **Scope Management**
-   - Define granular scopes
-   - Validate all requested scopes
-   - Follow the principle of least privilege
+2. **作用域管理**
+   - 定义细粒度的作用域
+   - 验证所有请求的作用域
+   - 遵循最小权限原则
 
-3. **Error Handling**
-   - Return standard OAuth2 error responses
-   - Don't leak sensitive information in errors
-   - Log security events appropriately
+3. **错误处理**
+   - 返回标准的 OAuth2 错误响应
+   - 不要在错误中泄露敏感信息
+   - 适当地记录安全事件
 
-## Learning More
+## 进一步学习
 
-OAuth2 is a complex topic with many security considerations. Here are some valuable 
-resources:
+OAuth2 是一个复杂主题，包含许多安全考量。以下资源值得阅读：
 
-- The [OAuth 2.0 Security Best Practices](https://oauth.net/2/security-best-practices/) 
-  document is essential reading
-- The [OAuth 2.0 Threat Model](https://datatracker.ietf.org/doc/html/rfc6819) 
-  helps understand security risks
+- [OAuth 2.0 Security Best Practices](https://oauth.net/2/security-best-practices/) 文档是必读内容
+- [OAuth 2.0 Threat Model](https://datatracker.ietf.org/doc/html/rfc6819) 有助于理解安全风险
 
-## Next Steps
+## 下一步
 
-- [JWT Authentication](3-jwt.md) - Often used with OAuth2
-- [API Key Authentication](2-api-key.md) - A simpler alternative
-- [Security Best Practices](5-best-practices.md) - General security guidelines
+- [JWT 认证](3-jwt.md) - 通常与 OAuth2 一起使用
+- [API 密钥认证](2-api-key.md) - 更简单的替代方案
+- [安全最佳实践](5-best-practices.md) - 通用安全指南

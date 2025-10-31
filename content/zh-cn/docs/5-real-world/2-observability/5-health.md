@@ -1,52 +1,39 @@
 ---
-title: "Health Checks"
-description: "Implementing health checks with Clue"
+title: "健康检查"
+description: "使用 Clue 实现健康检查"
 weight: 5
 ---
 
-Health checks are crucial for service monitoring and orchestration. They help
-ensure your service is functioning correctly and all its dependencies are
-available. Clue provides a standard health check system that monitors service
-dependencies and reports their status, making it easy to integrate with
-container orchestrators and monitoring systems.
+健康检查对于服务监控和编排至关重要。它们有助于确保您的服务正常运行并且其所有依赖项都可用。Clue 提供了一个标准的健康检查系统，可以监控服务依赖项并报告其状态，从而可以轻松地与容器编排器和监控系统集成。
 
-## Overview
+## 概述
 
-Clue's health check system provides comprehensive service health monitoring:
+Clue 的健康检查系统提供全面的服务健康监控：
 
-- **Dependency Monitoring**: Tracks the health of databases, caches, and other services
-- **Standard Endpoints**: HTTP endpoints compatible with Kubernetes and other platforms
-- **Detailed Status**: Rich status information including uptime and version
-- **Custom Checks**: Support for business-specific health criteria
-- **Flexible Configuration**: Customizable timeouts, paths, and response formats
+- **依赖项监控**：跟踪数据库、缓存和其他服务的健康状况
+- **标准端点**：与 Kubernetes 和其他平台兼容的 HTTP 端点
+- **详细状态**：丰富的状态信息，包括正常运行时间和版本
+- **自定义检查**：支持特定于业务的健康标准
+- **灵活配置**：可自定义的超时、路径和响应格式
 
-## Basic Setup
+## 基本设置
 
-Setting up health checks in your service is straightforward. Here's a basic example:
+在您的服务中设置健康检查非常简单。这是一个基本示例：
 
 ```go
-// Create health checker
+// 创建健康检查器
 checker := health.NewChecker()
 
-// Mount health check endpoint
-// This creates a GET /health endpoint that returns service status
+// 挂载健康检查端点
+// 这会创建一个 GET /health 端点，返回服务状态
 mux.Handle("GET", "/health", health.Handler(checker))
 ```
 
-With this basic setup in place, your service gains several essential health
-monitoring capabilities. You get a standardized health check endpoint that
-external systems can reliably query to check your service's status. The endpoint
-returns responses in JSON format, making it easy for monitoring tools to parse
-and process the health data. The system uses standard HTTP status codes to
-clearly indicate whether your service is healthy or experiencing issues.
-Additionally, it automatically aggregates the status of all your service's
-dependencies, giving you a comprehensive view of your system's health at a
-glance.
+有了这个基本设置，您的服务就获得了几个基本的健康监控功能。您会得到一个标准化的健康检查端点，外部系统可以可靠地查询该端点以检查您的服务状态。该端点以 JSON 格式返回响应，使监控工具可以轻松解析和处理健康数据。该系统使用标准的 HTTP 状态代码来清楚地指示您的服务是健康的还是遇到了问题。此外，它会自动聚合您服务所有依赖项的状态，让您一目了然地全面了解系统的健康状况。
 
-## Response Format
+## 响应格式
 
-The health check endpoint returns a JSON response that includes the status of
-all monitored dependencies:
+健康检查端点返回一个 JSON 响应，其中包含所有受监控依赖项的状态：
 
 ```json
 {
@@ -60,29 +47,28 @@ all monitored dependencies:
 }
 ```
 
-The response includes:
-- **status**: Map of dependency names to their current status
-- **uptime**: Service uptime in seconds
-- **version**: Service version information
+响应包括：
+- **status**：依赖项名称与其当前状态的映射
+- **uptime**：服务正常运行时间（以秒为单位）
+- **version**：服务版本信息
 
-HTTP status codes:
-- **200 OK**: All dependencies are healthy
-- **503 Service Unavailable**: One or more dependencies are unhealthy
+HTTP 状态代码：
+- **200 OK**：所有依赖项都健康
+- **503 Service Unavailable**：一个或多个依赖项不健康
 
-## Implementing Health Checks
+## 实现健康检查
 
-To make a service or dependency health-checkable, implement the `Pinger`
-interface. This interface is simple but powerful:
+要使服务或依赖项可进行健康检查，请实现 `Pinger` 接口。这个接口简单但功能强大：
 
 ```go
-// Pinger interface
+// Pinger 接口
 type Pinger interface {
-    Name() string                    // Unique identifier for the dependency
-    Ping(context.Context) error      // Check if dependency is healthy
+    Name() string                    // 依赖项的唯一标识符
+    Ping(context.Context) error      // 检查依赖项是否健康
 }
 
-// Database health check
-// Example implementation for a PostgreSQL database
+// 数据库健康检查
+// PostgreSQL 数据库的示例实现
 type DBClient struct {
     db *sql.DB
 }
@@ -92,12 +78,12 @@ func (c *DBClient) Name() string {
 }
 
 func (c *DBClient) Ping(ctx context.Context) error {
-    // Use database's built-in ping functionality
+    // 使用数据库内置的 ping 功能
     return c.db.PingContext(ctx)
 }
 
-// Redis health check
-// Example implementation for a Redis cache
+// Redis 健康检查
+// Redis 缓存的示例实现
 type RedisClient struct {
     client *redis.Client
 }
@@ -107,39 +93,25 @@ func (c *RedisClient) Name() string {
 }
 
 func (c *RedisClient) Ping(ctx context.Context) error {
-    // Use Redis PING command
+    // 使用 Redis PING 命令
     return c.client.Ping(ctx).Err()
 }
 ```
 
-When implementing health checks, there are several important factors to
-consider. First and foremost, health checks should be lightweight and execute
-quickly to avoid impacting your service's performance. This is especially
-important since health checks may be called frequently by monitoring systems.
+在实现健康检查时，需要考虑几个重要因素。首先，健康检查应该是轻量级的并能快速执行，以避免影响服务的性能。这一点尤其重要，因为监控系统可能会频繁调用健康检查。
 
-Proper timeout handling is also critical. Each health check should respect
-timeouts passed via context and return promptly if the timeout is reached. This
-prevents health checks from hanging and potentially cascading into broader
-system issues.
+正确的超时处理也至关重要。每个健康检查都应遵守通过上下文传递的超时，并在达到超时时及时返回。这可以防止健康检查挂起并可能级联到更广泛的系统问题。
 
-The error messages returned by health checks should be clear and actionable.
-When a check fails, the error message should provide enough detail for operators
-to understand and address the issue quickly. This might include specific error
-codes, component states, or troubleshooting hints.
+健康检查返回的错误消息应该清晰且可操作。当检查失败时，错误消息应提供足够的详细信息，以便操作员能够快速理解和解决问题。这可能包括特定的错误代码、组件状态或故障排除提示。
 
-For health checks that are resource-intensive or hit external services, consider
-implementing a caching mechanism. This can help reduce load while still
-providing reasonably current health status. The cache duration should be
-balanced against your needs for accuracy - shorter durations give more current
-results but increase load.
+对于资源密集型或访问外部服务的健康检查，请考虑实现缓存机制。这有助于减少负载，同时仍能提供相当最新的健康状态。缓存持续时间应与您对准确性的需求相平衡——较短的持续时间可提供更及时的结果，但会增加负载。
 
-## Downstream Services
+## 下游服务
 
-Monitoring the health of downstream services is crucial for distributed systems.
-Here's how to implement health checks for different types of services:
+监控下游服务的健康状况对于分布式系统至关重要。以下是如何为不同类型的服务实现健康检查：
 
 ```go
-// HTTP service health check
+// HTTP 服务健康检查
 type ServiceClient struct {
     name   string
     client *http.Client
@@ -151,21 +123,21 @@ func (c *ServiceClient) Name() string {
 }
 
 func (c *ServiceClient) Ping(ctx context.Context) error {
-    // Create request with context for timeout handling
+    // 创建带有上下文的请求以处理超时
     req, err := http.NewRequestWithContext(ctx,
         "GET", c.url+"/health", nil)
     if err != nil {
         return err
     }
     
-    // Perform health check request
+    // 执行健康检查请求
     resp, err := c.client.Do(req)
     if err != nil {
         return err
     }
     defer resp.Body.Close()
     
-    // Check response status
+    // 检查响应状态
     if resp.StatusCode != http.StatusOK {
         return fmt.Errorf("service unhealthy: %d", resp.StatusCode)
     }
@@ -173,7 +145,7 @@ func (c *ServiceClient) Ping(ctx context.Context) error {
     return nil
 }
 
-// gRPC service health check
+// gRPC 服务健康检查
 type GRPCClient struct {
     name string
     conn *grpc.ClientConn
@@ -184,7 +156,7 @@ func (c *GRPCClient) Name() string {
 }
 
 func (c *GRPCClient) Ping(ctx context.Context) error {
-    // Use standard gRPC health checking protocol
+    // 使用标准的 gRPC 健康检查协议
     return c.conn.Invoke(ctx,
         "/grpc.health.v1.Health/Check",
         &healthpb.HealthCheckRequest{},
@@ -192,13 +164,12 @@ func (c *GRPCClient) Ping(ctx context.Context) error {
 }
 ```
 
-## Custom Health Checks
+## 自定义健康检查
 
-Beyond basic connectivity checks, you can implement custom health checks for
-business-specific requirements:
+除了基本的连接检查之外，您还可以为特定于业务的需求实现自定义健康检查：
 
 ```go
-// Custom business logic check
+// 自定义业务逻辑检查
 type BusinessCheck struct {
     store *Store
 }
@@ -208,7 +179,7 @@ func (c *BusinessCheck) Name() string {
 }
 
 func (c *BusinessCheck) Ping(ctx context.Context) error {
-    // Check critical business conditions
+    // 检查关键业务条件
     ok, err := c.store.CheckConsistency(ctx)
     if err != nil {
         return err
@@ -219,7 +190,7 @@ func (c *BusinessCheck) Ping(ctx context.Context) error {
     return nil
 }
 
-// System resource check
+// 系统资源检查
 type ResourceCheck struct {
     threshold float64
 }
@@ -229,7 +200,7 @@ func (c *ResourceCheck) Name() string {
 }
 
 func (c *ResourceCheck) Ping(ctx context.Context) error {
-    // Check memory usage
+    // 检查内存使用情况
     var m runtime.MemStats
     runtime.ReadMemStats(&m)
     
@@ -242,9 +213,9 @@ func (c *ResourceCheck) Ping(ctx context.Context) error {
 }
 ```
 
-## Kubernetes Integration
+## Kubernetes 集成
 
-Configure your service's health checks in Kubernetes using probes. This example shows both liveness and readiness probes:
+在 Kubernetes 中使用探针配置您的服务的健康检查。此示例显示了活动探针和就绪探针：
 
 ```yaml
 apiVersion: apps/v1
@@ -273,41 +244,41 @@ spec:
           periodSeconds: 5
 ```
 
-## Best Practices
+## 最佳实践
 
-1. **Dependency Checks**:
-   - Include all critical dependencies
-   - Set appropriate timeouts
-   - Handle transient failures
-   - Monitor check performance
+1. **依赖项检查**：
+   - 包括所有关键依赖项
+   - 设置适当的超时
+   - 处理瞬时故障
+   - 监控检查性能
 
-2. **Response Times**:
-   - Keep checks lightweight
-   - Use concurrent checks
-   - Cache results when appropriate
-   - Monitor check latency
+2. **响应时间**：
+   - 保持检查轻量级
+   - 使用并发检查
+   - 适当时缓存结果
+   - 监控检查延迟
 
-3. **Error Handling**:
-   - Provide clear error messages
-   - Include error context
-   - Log check failures
-   - Alert on repeated failures
+3. **错误处理**：
+   - 提供清晰的错误消息
+   - 包括错误上下文
+   - 记录检查失败
+   - 对重复失败发出警报
 
-4. **Security**:
-   - Secure health endpoints
-   - Limit exposed information
-   - Monitor access patterns
-   - Use appropriate authentication
+4. **安全性**：
+   - 保护健康端点
+   - 限制暴露的信息
+   - 监控访问模式
+   - 使用适当的身份验证
 
-## Learn More
+## 了解更多
 
-For more information about health checks:
+有关健康检查的更多信息：
 
 - [Clue Health Package](https://pkg.go.dev/goa.design/clue/health)
-  Complete documentation of Clue's health check capabilities
+  Clue 健康检查功能的完整文档
 
 - [Kubernetes Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
-  Official Kubernetes documentation on probe configuration
+  有关探针配置的官方 Kubernetes 文档
 
 - [Health Check Patterns](https://microservices.io/patterns/observability/health-check-api.html)
-  Common patterns and best practices for health check APIs 
+  健康检查 API 的常见模式和最佳实践

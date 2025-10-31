@@ -1,100 +1,84 @@
 ---
-title: "Single Page Application Integration"
-linkTitle: Single Page Application
+title: "单页应用（SPA）集成"
+linkTitle: 单页应用
 weight: 3
-description: "Learn to embed and serve Single Page Applications (SPAs) in your Goa service, including React integration, client-side routing support, and production deployment strategies."
+description: "学习在 Goa 服务中嵌入并提供单页应用（SPA），包含 React 集成、客户端路由支持以及生产部署策略。"
 ---
 
-For simple applications, you can embed your React application directly into the Go binary using
-`go:embed`. This approach combines the benefits of modern frontend development with
-Go's streamlined deployment capabilities. By packaging your entire application - both
-the backend API and React frontend - into a single self-contained executable, you
-eliminate the need to manage separate deployment artifacts or configure additional
-web servers for static file serving. Simply build the binary, deploy it, and run
-it. This approach significantly simplifies deployment while ensuring your frontend
-and backend versions remain synchronized.
+对于简单应用，你可以使用 `go:embed` 将 React 应用直接嵌入到 Go 二进制中。这种方式兼具现代前端开发的优势与 Go 的简化部署能力。通过将整个应用（后端 API 与 React 前端）打包为一个自包含的可执行文件，你无需额外管理部署产物或配置静态文件服务器。只需构建二进制、部署并运行即可。该方法极大简化了部署，同时确保前后端版本保持一致。
 
-## Project Structure
+## 项目结构
 
-A project structure with a React SPA might look like:
+包含 React SPA 的项目结构示例如下：
 
 ```
 myapp/
-├── cmd/                  # Main application
-├── design/               # Shared design constructs
-│   ├── design.go         # Imports non-API service designs
-│   └── shared/           # Shared design constructs
-├── gen/                  # Generated Goa code for non-API services
+├── cmd/                  # 主应用
+├── design/               # 共享的设计构件
+│   ├── design.go         # 导入非 API 服务设计
+│   └── shared/           # 共享设计构件
+├── gen/                  # 非 API 服务的 Goa 生成代码
 └── services/
     ├── api/
-    │   ├── design/       # API design
-    │   ├── gen/          # Generated Goa code
-    │   ├── api.go        # API implementation
+    │   ├── design/       # API 设计
+    │   ├── gen/          # Goa 生成代码
+    │   ├── api.go        # API 实现
     │   └── ui/
-    │       ├── build/    # UI build
-    │       ├── src/      # React source
-    │       └── public/   # Static assets
-    ├── service1/         # Other services
+    │       ├── build/    # 前端构建产物
+    │       ├── src/      # React 源码
+    │       └── public/   # 静态资源
+    ├── service1/         # 其他服务
     :
 ```
 
-The design organization follows a specific pattern to maintain clean separation of concerns:
+该设计组织遵循特定模式，以保持清晰的关注点分离：
 
-1. The public HTTP API service (`services/api`) has its own `design` package and
-   `gen` directory. This isolation keeps the generated OpenAPI specification
-   focused solely on the public API endpoints.
+1. 公共 HTTP API 服务（`services/api`）拥有独立的 `design` 包与 `gen` 目录。该隔离使生成的 OpenAPI 规范仅关注公共 API 端点。
 
-2. All other service designs are imported into the top-level `design` package
-   and their code is generated into the root `gen` directory. This approach
-   simplifies code generation to just two commands:
-   - `goa gen myapp/services/api/design` for the public API
-   - `goa gen myapp/design` for all other services
+2. 其他服务的设计统一导入到顶层 `design` 包，其代码生成到根部的 `gen` 目录。这样只需两条命令即可完成代码生成：
+   - `goa gen myapp/services/api/design`（生成公共 API）
+   - `goa gen myapp/design`（生成其他服务）
 
-This structure makes it clear which endpoints are part of the public API while
-keeping the code generation process efficient.
+这种结构清晰标识哪些端点属于公共 API，同时保持代码生成流程高效。
 
-Additionally the top level design package may include shared design constructs
-that are used by all services.
+此外，顶层 `design` 包可包含所有服务共享的设计构件。
 
-The `ui/` directory contains the React application and static assets that gets
-embedded into the Go binary.
+`ui/` 目录包含会被嵌入到 Go 二进制中的 React 应用与静态资源。
 
-## Design
+## 设计（Design）
 
-Define your service to handle both API endpoints and serve the SPA. During
-development, you'll need to configure CORS to allow your React development
-server to communicate with your Goa backend:
+定义服务以同时处理 API 端点并提供 SPA。在开发期间，需要配置 CORS 以允许 React 开发服务器与 Goa 后端通信：
 
 ```go
 var _ = Service("myapp", func() {
-    Description("The myapp service serves the myapp front end and API.")
+    Description("myapp 服务同时提供前端 UI 与 API。")
     
-    // Configure CORS for development
+    // 为开发环境配置 CORS
     cors.Origin("http://localhost:3000", func() {
         cors.Headers("Content-Type")
         cors.Methods("GET", "POST", "PUT", "DELETE")
         cors.Credentials()
     })
     
-    // Serve the React app
+    // 提供 React 应用
     Files("/ui/{*filepath}", "ui/build")
     
-    // Serve static assets directly
+    // 直接提供静态资源
     Files("/robots.txt", "ui/public/robots.txt")
     Files("/favicon.ico", "ui/public/favicon.ico")
     
-    // Handle UI paths
+    // 处理 UI 路径
     Method("home", func() {
         HTTP(func() {
             GET("/")
             GET("/ui")
-            Redirect("/ui/", StatusMovedPermanently) // Redirect root to /ui/
+            Redirect("/ui/", StatusMovedPermanently) // 将根路径重定向到 /ui/
         })
     })
     
-    // API endpoints
+    // API 端点
     Method("list_widgets", func() {
-        Description("List widgets.")
+        Description("列出部件。")
         Result(ArrayOf(Widget))
         HTTP(func() {
             GET("/api/widgets")
@@ -102,25 +86,24 @@ var _ = Service("myapp", func() {
         })
     })
     
-    // ... additional API endpoints
+    // ... 更多 API 端点
 })
 ```
 
-The design serves several purposes:
-1. Configures CORS for development with React's default port
-2. Mounts the React application under `/ui`
-3. Handles static assets and redirects
-4. Provides API endpoints under `/api`
-5. Supports client-side routing through wildcard paths
+该设计包含以下目的：
+1. 为 React 默认端口的开发环境配置 CORS
+2. 将 React 应用挂载到 `/ui`
+3. 处理静态资源与重定向
+4. 在 `/api` 下提供 API 端点
+5. 通过通配符路径支持客户端路由
 
-Refer to the [CORS](https://github.com/goadesign/plugins/tree/master/cors)
-plugin for more details on setting up CORS.
+关于 CORS 设置的详细信息请参阅 [CORS 插件](https://github.com/goadesign/plugins/tree/master/cors)。
 
-## Implementation 
+## 实现（Implementation）
 
-### Service Structure
+### 服务结构
 
-The service implementation embeds the React build and handles API requests:
+服务实现会嵌入 React 构建产物并处理 API 请求：
 
 ```go
 package front
@@ -134,35 +117,35 @@ import (
 var UIBuildFS embed.FS
 
 type Service struct {
-    // Service dependencies
+    // 依赖等
 }
 
 func New() *Service {
     return &Service{}
 }
 
-// Home implements the redirect handler
+// Home 实现重定向处理器
 func (svc *Service) Home(ctx context.Context) error {
     return nil
 }
 
-// API method implementations
+// API 方法实现
 func (svc *Service) ListWidgets(ctx context.Context) ([]*Widget, error) {
-    // Implementation
+    // 具体实现
 }
 ```
 
-### Main Function Setup
+### main 函数设置
 
-Configure the service in main:
+在 `main` 中配置服务：
 
 ```go
 func main() {
-    // Create service & endpoints
+    // 创建服务与端点
     svc := myapp.New()
     endpoints := genmyapp.NewEndpoints(svc)
     
-    // Create transport
+    // 创建传输层
     mux := goahttp.NewMuxer()
     server := genserver.New(
         endpoints,
@@ -171,100 +154,66 @@ func main() {
         goahttp.ResponseEncoder,
         nil,
         nil,
-        http.FS(myapp.UIBuildFS),  // Serve UI
+        http.FS(myapp.UIBuildFS),  // 提供 UI
     )
     genserver.Mount(mux, server)
     
-    // Start server
+    // 启动服务器
     if err := http.ListenAndServe(":8000", mux); err != nil {
         log.Fatal(err)
     }
 }
 ```
 
-## Development Workflow
+## 开发工作流
 
-For local development:
+本地开发：
 
-1. Configure the React development server in package.json:
+1. 在 package.json 中配置 React 开发服务器：
 ```json
 {
   "proxy": "http://localhost:8000"
 }
 ```
 
-2. Run React development server:
+2. 启动 React 开发服务器：
 ```bash
 cd services/api/ui
 npm start
 ```
 
-3. Run Go service:
+3. 运行 Go 服务：
 ```bash
 go run myapp/cmd/myapp
 ```
 
-The proxy configuration in package.json works with the CORS settings to enable seamless development. The React development server forwards API requests to your Goa backend while serving the UI directly.
+package.json 中的代理配置会与 CORS 设置配合，支持顺畅的开发体验。React 开发服务器会在本地直接提供 UI，同时将 API 请求转发到 Goa 后端。
 
-## Build Process
+## 构建流程
 
-1. Build React app:
+1. 构建 React 应用：
 ```bash
 cd services/api/ui && npm run build
 ```
 
-2. Build Go binary:
+2. 构建 Go 二进制：
 ```bash
 go build myapp/cmd/myapp
 ```
 
-## Best Practices
+## 最佳实践
 
-1. **API Organization**
-   When organizing your API endpoints, follow a consistent structure by placing
-   all API endpoints under an `/api` prefix. This makes it clear which routes
-   are for the API versus static content. Additionally, ensure your error
-   responses follow a standardized format across all endpoints to provide a
-   consistent experience for API consumers. Finally, organize related endpoints
-   into logical groups based on their functionality or resource type to maintain
-   a clean and intuitive API structure.
+1. **API 组织**
+   将所有 API 路由置于统一的 `/api` 前缀下，以清晰区分 API 与静态内容。同时，确保错误响应在所有端点上遵循统一格式，为使用者提供一致体验。最后，根据功能或资源类型对相关端点进行分组组织，保持结构清晰、直观。
 
-2. **CORS Configuration**
-   When configuring CORS in production, be specific about which origins are
-   allowed to access your API - avoid using wildcards and explicitly list
-   trusted domains. Implement appropriate caching of preflight requests to
-   reduce unnecessary OPTIONS requests and improve performance. Only expose the
-   HTTP headers and methods that your API actually needs, following the
-   principle of least privilege. Finally, carefully consider the security
-   implications of enabling credentials mode, as it allows cookies and
-   authentication headers to be included in cross-origin requests - only enable
-   this if specifically required by your application's security model.
+2. **CORS 配置**
+   在生产环境中，明确允许访问 API 的来源域，避免使用通配符；对预检请求进行合理缓存以减少不必要的 OPTIONS 请求并提升性能；仅暴露 API 实际需要的 HTTP 头与方法，遵循最小权限原则；谨慎评估启用凭据模式的安全影响（会允许跨域请求携带 cookie 与认证头），仅在确有必要时启用。
 
-3. **SPA Serving**
-   When serving your SPA, it's important to serve it under a dedicated path
-   (such as `/ui`) to clearly separate it from your API routes. You should also
-   implement proper handling of root redirects to ensure clean, user-friendly
-   URLs. Additionally, your server configuration needs to support client-side
-   routing by properly handling all routes defined in your frontend application
-   and returning the main `index.html` file for those routes.
+3. **SPA 提供**
+   将 SPA 放在专用路径（如 `/ui`）下提供，以清晰地与 API 路由分离；实现对根路径重定向的合理处理，保证简洁友好的 URL；服务器需支持客户端路由，对前端应用定义的所有路由返回主 `index.html`。
 
-4. **Development**
-   During development, use React's development server with the proxy
-   configuration to route API requests to your Go service. This provides hot
-   reloading and other development features while still allowing seamless
-   communication with your backend. Keep your UI code organized close to the
-   service that serves it to maintain a clear relationship between frontend and
-   backend components. Additionally, implement proper CORS (Cross-Origin
-   Resource Sharing) handling for your API calls to ensure secure communication
-   between the frontend and backend during development and production.
+4. **开发**
+   开发阶段使用 React 开发服务器并配置代理，将 API 请求路由到 Go 服务；同时获得热更新等开发体验。保持 UI 代码靠近提供它的服务，便于维护前后端的关联关系；并正确处理跨域（CORS），保障开发与生产环境中的前后端通信安全。
 
-5. **Production**
-   For production deployments, there are several important considerations to
-   keep in mind. First, ensure you always build your React application before
-   building the Go binary - this ensures the latest frontend code is embedded in
-   your service. Implement appropriate cache headers for static assets like
-   JavaScript, CSS and images to improve performance and reduce server load. Set
-   up comprehensive logging and instrumentation to monitor your application's
-   health and performance in production. Finally, implement proper graceful
-   shutdown handling to ensure in-flight requests complete successfully when the
-   service needs to stop.
+5. **生产**
+   在生产部署中，务必先构建 React 应用再构建 Go 二进制，确保最新前端代码被嵌入服务；为 JS、CSS、图片等静态资源设置合理的缓存头以提升性能并降低负载；建立完善的日志与监控，以便观测运行状况与性能；实现优雅关闭，确保服务停止时在途请求能够成功完成。

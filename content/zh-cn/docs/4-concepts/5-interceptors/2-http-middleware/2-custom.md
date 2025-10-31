@@ -1,31 +1,21 @@
 ---
-title: Custom HTTP Middleware
+title: 自定义 HTTP 中间件
 weight: 2
 description: >
-  Learn how to create HTTP middleware that works effectively with Goa services, with practical examples and integration patterns.
+  学习如何编写与 Goa 服务高效协作的 HTTP 中间件，包含实践示例与集成模式。
 ---
 
-Goa services use standard Go HTTP handlers, which means you can use any HTTP
-middleware that follows Go's standard middleware pattern. This guide shows you
-how to create effective HTTP middleware that works well with Goa services, with
-examples drawn from real-world usage.
+Goa 服务使用标准的 Go HTTP 处理器，因此你可以使用任何遵循 Go 标准中间件模式的 HTTP 中间件。本文展示如何编写与 Goa 服务良好协作的高效 HTTP 中间件，并结合真实场景示例。
 
-HTTP middleware should focus on HTTP protocol concerns like headers, cookies, and
-request/response manipulation. For business logic and type-safe access to your
-service's payloads and results, use Goa interceptors instead. Interceptors
-provide direct access to your service's domain types and are better suited for
-business-level concerns.
+HTTP 中间件应聚焦 HTTP 协议关注点，如请求头、Cookie 以及请求/响应处理。涉及业务逻辑与对服务 Payload 与 Result 的类型安全访问，请使用 Goa 拦截器。拦截器可直接访问服务的领域类型，更适合业务层关注点。
 
-## Common Patterns
+## 常见模式
 
-Here are some common middleware patterns that are particularly useful when
-building Goa services. These patterns use standard Go HTTP middleware techniques
-and can be combined with Goa's generated HTTP handlers.
+下面是构建 Goa 服务时特别有用的一些中间件模式。这些模式使用标准的 Go HTTP 中间件技术，并可与 Goa 生成的 HTTP 处理器组合使用。
 
-### 1. Response Writer Wrapper
+### 1. 包装 ResponseWriter
 
-The standard `http.ResponseWriter` interface doesn't provide access to response
-metadata after writing. This pattern shows how to capture that information:
+标准接口 `http.ResponseWriter` 在写出后无法访问响应元数据。该模式展示如何捕获这类信息：
 
 ```go
 type responseWriter struct {
@@ -47,7 +37,7 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 
 func MetricsMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Create wrapper
+        // 创建包装器
         rw := &responseWriter{
             ResponseWriter: w,
             status:        http.StatusOK,
@@ -57,59 +47,44 @@ func MetricsMiddleware(next http.Handler) http.Handler {
         next.ServeHTTP(rw, r)
         duration := time.Since(start)
         
-        // Record metrics
+        // 记录指标
         metrics.RecordHTTPMetrics(r.Method, r.URL.Path, rw.status, rw.size, duration)
     })
 }
 ```
 
-This pattern plays an essential role in several key areas of HTTP request
-handling. It enables accurate collection of HTTP-level metrics by capturing
-response status codes and sizes. The pattern also facilitates comprehensive
-logging of response data, giving you visibility into what your service returns
-to clients. Additionally, it provides a foundation for implementing response
-transformations, allowing you to modify or enrich responses before they reach
-the client.
+该模式在 HTTP 请求处理的多个关键领域发挥作用：通过捕获响应状态码与大小，精确采集 HTTP 层指标；便于全面记录响应日志，使你清楚了解服务返回内容；同时也为实现响应转换提供基础，可在响应到达客户端前进行修改或丰富。
 
-Note that if you need to access or modify the actual payload data (not just HTTP
-metadata), consider using a Goa interceptor instead. Interceptors provide
-type-safe access to your service's domain types without having to parse the raw
-HTTP body.
+注意：若需要访问或修改实际的负载数据（而非仅 HTTP 元数据），请考虑使用 Goa 拦截器。拦截器可类型安全地访问服务的领域类型，无需解析原始 HTTP Body。
 
-### 2. Path-Based Filtering
+### 2. 基于路径的过滤
 
-When working with Goa services, you often need to handle different endpoints
-differently. This pattern shows how to apply middleware selectively:
+在使用 Goa 服务时，常需要对不同端点进行差异化处理。该模式展示如何选择性应用中间件：
 
 ```go
 func PathFilterMiddleware(next http.Handler) http.Handler {
-    // Pre-compile regex for efficiency
+    // 为效率预编译正则
     noLogRegexp := regexp.MustCompile(`^/(healthz|livez|metrics)$`)
     
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Skip processing for health check and metrics endpoints
+        // 对健康检查与指标端点跳过处理
         if noLogRegexp.MatchString(r.URL.Path) {
             next.ServeHTTP(w, r)
             return
         }
         
-        // Process other requests
-        // ... your middleware logic here ...
+        // 处理其他请求
+        // ... 在此编写你的中间件逻辑 ...
         next.ServeHTTP(w, r)
     })
 }
 ```
 
-Path-based filtering is particularly useful when you need to handle different
-endpoints in distinct ways. For example, you can exclude health check endpoints
-from your logging pipeline to reduce noise, apply specialized processing for API
-routes versus static file routes, and optimize middleware performance by
-skipping unnecessary processing on certain paths. This selective application of
-middleware helps keep your service efficient and well-organized.
+基于路径的过滤在需要对不同端点采取不同策略时非常有用。例如，可将健康检查端点排除在日志管道之外以减少噪声；对 API 路由与静态文件路由采用不同处理；并通过在某些路径上跳过不必要的处理来优化中间件性能。这种选择性应用有助于保持服务的高效与良好组织。
 
-### 3. Rate Limiting
+### 3. 限流
 
-When protecting your API from excessive usage, rate limiting is a common HTTP-level concern that belongs in middleware:
+当保护 API 免受过度使用时，限流是属于中间件的常见 HTTP 层关注点：
 
 ```go
 type RateLimiter struct {
@@ -130,17 +105,17 @@ func NewRateLimiter(rate float64, capacity int64) *RateLimiter {
 func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            // Get client identifier (e.g., IP address)
+            // 获取客户端标识（例如 IP 地址）
             clientID := r.RemoteAddr
             
-            // Check rate limit
+            // 检查速率限制
             if !limiter.Allow(clientID) {
                 w.Header().Set("Retry-After", "60")
                 http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
                 return
             }
             
-            // Add rate limit headers
+            // 添加限流相关响应头
             limit := strconv.FormatInt(limiter.capacity, 10)
             w.Header().Set("X-RateLimit-Limit", limit)
             w.Header().Set("X-RateLimit-Remaining", 
@@ -152,41 +127,37 @@ func RateLimitMiddleware(limiter *RateLimiter) func(http.Handler) http.Handler {
 }
 ```
 
-This middleware demonstrates handling a pure HTTP protocol concern:
-- Managing request rates through token bucket algorithm
-- Setting appropriate rate limit headers
-- Returning standard HTTP 429 status when limits are exceeded
-- Operating purely at the HTTP protocol level without business logic
+该中间件展示了如何处理纯 HTTP 协议关注点：
+- 通过令牌桶算法管理请求速率
+- 设置合适的限流响应头
+- 当超出限制时返回标准的 HTTP 429 状态码
+- 纯粹在 HTTP 协议层工作而不涉及业务逻辑
 
-Unlike CORS (which is handled by Goa's plugin system), rate limiting is a 
-protocol-specific concern that fits well in custom HTTP middleware.
+与由 Goa 插件系统处理的 CORS 不同，限流属于协议特定关注点，非常适合放在自定义 HTTP 中间件中。
 
-## Integration Examples
+## 集成示例
 
-These examples show how to integrate HTTP middleware with Goa's generated handlers
-to add common functionality. Remember that these middleware focus on HTTP-level
-concerns - for business logic, use Goa interceptors instead.
+以下示例展示如何将 HTTP 中间件与 Goa 生成的处理器集成以添加常见功能。请记住，这些中间件聚焦 HTTP 层关注点——业务逻辑请使用 Goa 拦截器。
 
-### 1. Organization Context
+### 1. 组织上下文
 
-For multi-tenant services, you often need to validate and inject organization
-information. This middleware handles the HTTP aspects of organization validation:
+在多租户服务中，常需要校验并注入组织信息。该中间件负责组织校验的 HTTP 方面：
 
 ```go
 func OrganizationMiddleware(orgService OrganizationService) func(http.Handler) http.Handler {
     return func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-            // Extract org name from path or header
+            // 从路径或请求头提取组织名
             orgName := extractOrgName(r)
             
-            // Convert org name to ID
+            // 将组织名转换为 ID
             orgID, err := orgService.GetOrgID(r.Context(), orgName)
             if err != nil {
                 http.Error(w, "Invalid organization", http.StatusBadRequest)
                 return
             }
             
-            // Add org ID to context
+            // 将组织 ID 写入上下文
             ctx := context.WithValue(r.Context(), "org.id", orgID)
             next.ServeHTTP(w, r.WithContext(ctx))
         })
@@ -194,13 +165,11 @@ func OrganizationMiddleware(orgService OrganizationService) func(http.Handler) h
 }
 ```
 
-Note: If you need to perform business logic validation or access typed payloads
-based on the organization, implement that in a Goa interceptor where you have
-direct access to your service's domain types.
+注意：若需基于组织进行业务校验或访问类型化的 Payload，请在 Goa 拦截器中实现，在那里你可以直接访问服务领域类型。
 
-### 2. Request Timeout
+### 2. 请求超时
 
-Implement request-level timeouts to maintain service stability:
+实现请求级超时以维持服务稳定性：
 
 ```go
 func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
@@ -229,16 +198,16 @@ func TimeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 
 ### 3. Authorization Cookie
 
-Handle WebSocket authentication by converting header-based auth to cookie-based auth:
+通过将基于 Header 的认证转换为基于 Cookie 的认证来处理 WebSocket 认证：
 
 ```go
 func AuthorizationCookieMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         if websocket.IsWebSocketUpgrade(r) {
-            // Extract token from Authorization header
+            // 从 Authorization 头提取令牌
             token := r.Header.Get("Authorization")
             if token != "" {
-                // Set ephemeral cookie for WebSocket auth
+                // 为 WebSocket 认证设置临时 Cookie
                 http.SetCookie(w, &http.Cookie{
                     Name:     "Authorization",
                     Value:    token,
@@ -255,25 +224,25 @@ func AuthorizationCookieMiddleware(next http.Handler) http.Handler {
 }
 ```
 
-## Complete Example
+## 完整示例
 
-Here's how to combine these middleware patterns with a Goa HTTP server:
+以下展示如何将这些中间件模式与 Goa HTTP 服务器结合：
 
 ```go
 func main() {
-    // Create Goa HTTP handler
+    // 创建 Goa HTTP 处理器
     mux := goahttp.NewMuxer()
     server := genhttp.New(endpoints, mux, decoder, encoder, eh, eh)
     genhttp.Mount(mux, server)
     
-    // Build middleware chain from outermost to innermost
+    // 从最外层到最内层构建中间件链
     mux.Use(AuthorizationCookieMiddleware)
     mux.Use(OrganizationMiddleware(orgService))
     mux.Use(TimeoutMiddleware(30 * time.Second))
     mux.Use(PathFilterMiddleware)
     mux.Use(MetricsMiddleware)
     
-    // Create server with timeouts
+    // 创建带超时的服务器
     httpServer := &http.Server{
         Addr:              ":8080",
         Handler:           mux,
@@ -284,18 +253,18 @@ func main() {
 }
 ```
 
-## Testing Custom Middleware
+## 测试自定义中间件
 
-Test your middleware using Clue's [mock package](https://github.com/goadesign/clue/tree/main/mock):
+使用 Clue 的 [mock 包](https://github.com/goadesign/clue/tree/main/mock) 测试你的中间件：
 
 ```go
-// Import Clue's mock package
+// 引入 Clue 的 mock 包
 import (
     "github.com/goadesign/clue/mock"
 )
 
 func TestOrganizationMiddleware(t *testing.T) {
-    // Create mock org service using Clue's mock package
+    // 使用 Clue 的 mock 包创建模拟组织服务
     mockOrgService := &mockOrgService{mock.New()}
     
     tests := []struct {
@@ -334,25 +303,25 @@ func TestOrganizationMiddleware(t *testing.T) {
     
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Create fresh mock for each test
+            // 为每个测试创建新的 mock
             mock := &mockOrgService{mock.New()}
             if tt.setup != nil {
                 tt.setup(mock)
             }
             
-            // Create middleware
+            // 创建中间件
             mw := OrganizationMiddleware(mock)
             
-            // Create test request
+            // 创建测试请求
             req := httptest.NewRequest("GET", "/", nil)
             req.Header.Set("X-Organization", tt.orgName)
             
-            // Create response recorder
+            // 创建响应记录器
             rec := httptest.NewRecorder()
             
-            // Create test handler
+            // 创建测试处理器
             handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                // Verify org ID in context
+                // 验证上下文中的组织 ID
                 orgID := r.Context().Value("org.id")
                 if orgID != "org-123" && !tt.wantErr {
                     t.Errorf("expected org ID org-123, got %v", orgID)
@@ -360,15 +329,15 @@ func TestOrganizationMiddleware(t *testing.T) {
                 w.WriteHeader(http.StatusOK)
             })
             
-            // Execute middleware
+            // 执行中间件
             mw(handler).ServeHTTP(rec, req)
             
-            // Check response
+            // 检查响应
             if rec.Code != tt.wantCode {
                 t.Errorf("expected status code %d, got %d", tt.wantCode, rec.Code)
             }
             
-            // Verify all expected calls were made
+            // 验证所有期望的调用已执行
             if mock.HasMore() {
                 t.Error("not all expected operations were performed")
             }
@@ -376,13 +345,13 @@ func TestOrganizationMiddleware(t *testing.T) {
     }
 }
 
-// Mock implementation using Clue's mock package
-// This shows how to properly structure a mock using Clue
+// 使用 Clue 的 mock 包的模拟实现
+// 展示如何使用 Clue 正确组织一个 mock
 type mockOrgService struct {
-    *mock.Mock // Embed Clue's Mock type
+    *mock.Mock // 嵌入 Clue 的 Mock 类型
 }
 
-// GetOrgID implements the mock using Clue's Next pattern
+// 使用 Clue 的 Next 模式实现 GetOrgID
 func (m *mockOrgService) GetOrgID(ctx context.Context, name string) (string, error) {
     if f := m.Next("GetOrgID"); f != nil {
         return f.(func(context.Context, string) (string, error))(ctx, name)
@@ -391,26 +360,26 @@ func (m *mockOrgService) GetOrgID(ctx context.Context, name string) (string, err
 }
 ```
 
-This example demonstrates several key features of Clue's mock package:
+该示例展示了 Clue 的 mock 包的关键特性：
 
-1. **Type-Safe Mocking**: Clue provides type-safe mock implementations
-2. **Sequence Control**: Use `Add` for ordered expectations
-3. **Default Behaviors**: Use `Set` for consistent responses
-4. **Verification**: Use `HasMore` to ensure all expectations were met
+1. 类型安全的 Mock 实现
+2. 使用 `Add` 控制调用顺序
+3. 使用 `Set` 定义默认行为
+4. 使用 `HasMore` 验证所有期望均已满足
 
-## Best Practices
+## 最佳实践
 
-1. **Keep Middleware Focused**: Each middleware should handle one specific HTTP concern. Use Goa interceptors for business logic.
-2. **Use Middleware Options**: Make middleware configurable through functional options.
-3. **Handle Errors Gracefully**: Return appropriate HTTP status codes and error messages.
-4. **Optimize Performance**: Pre-compile regular expressions and use object pools.
-5. **Test Edge Cases**: Test error conditions, timeouts, and concurrent requests.
-6. **Document Behavior**: Document any headers or context values your middleware uses.
-7. **Separate Concerns**: Use HTTP middleware for protocol concerns and Goa interceptors for business logic.
+1. 保持中间件聚焦：每个中间件应处理单一的 HTTP 关注点。业务逻辑使用 Goa 拦截器。
+2. 使用中间件选项：通过函数式选项使中间件可配置。
+3. 优雅处理错误：返回合适的 HTTP 状态码与错误信息。
+4. 优化性能：预编译正则表达式并使用对象池。
+5. 测试边界场景：测试错误条件、超时与并发请求。
+6. 文档化行为：记录中间件使用的任何头或上下文值。
+7. 关注点分离：HTTP 协议关注点用中间件，业务逻辑使用 Goa 拦截器。
 
-## Next Steps
+## 下一步
 
-- Review [HTTP Transport](@/docs/4-concepts/3-http) for more details on Goa's HTTP handling
-- Learn about [Interceptors](@/docs/4-concepts/5-interceptors) for handling business logic
-- Explore [Observability](@/docs/5-real-world/2-observability) for monitoring patterns
-- Check out [Security](@/docs/5-real-world/3-security) for security best practices 
+- 查看 [HTTP 传输](@/docs/4-concepts/3-http) 了解 Goa 的 HTTP 处理细节
+- 学习 [拦截器](@/docs/4-concepts/5-interceptors) 以处理业务逻辑
+- 探索 [可观测性](@/docs/5-real-world/2-observability) 的监控模式
+- 查看 [安全](@/docs/5-real-world/3-security) 的最佳实践

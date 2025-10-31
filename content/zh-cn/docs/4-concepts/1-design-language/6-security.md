@@ -1,52 +1,52 @@
 ---
-title: "Security"
-linkTitle: "Security"
+title: "安全"
+linkTitle: "安全"
 weight: 6
-description: "Define authentication and authorization schemes for your services using Goa's security DSL, including JWT, API keys, Basic Auth, and OAuth2."
+description: "使用 Goa 的安全 DSL 为服务定义认证与鉴权方案，涵盖 JWT、API Key、Basic Auth 与 OAuth2。"
 ---
 
-## Security Overview
+## 安全概览
 
-When securing APIs, it's important to understand two distinct concepts:
+在保护 API 时，需要区分两个概念：
 
-- **Authentication** (AuthN): Verifies the identity of a client ("Who are you?")
-- **Authorization** (AuthZ): Determines what an authenticated client can do ("What are you allowed to do?")
+- 认证（AuthN）：验证客户端身份（“你是谁？”）
+- 鉴权（AuthZ）：确定已认证客户端可执行的操作（“你被允许做什么？”）
 
-Goa provides DSL constructs to define both authentication and authorization requirements for your services.
+Goa 提供 DSL 构造来同时定义服务的认证与鉴权要求。
 
-## Security Schemes
+## 安全方案（Security Schemes）
 
-### JWT (JSON Web Token)
+### JWT（JSON Web Token）
 
-JWT is an open standard ([RFC 7519](https://tools.ietf.org/html/rfc7519)) that defines a compact way to securely transmit information between parties as a JSON object. JWTs are often used for both authentication and authorization:
+JWT 是一个开放标准（[RFC 7519](https://tools.ietf.org/html/rfc7519)），定义了使用 JSON 对象在各方之间安全传输信息的紧凑方式。JWT 通常同时用于认证与鉴权：
 
-1. **Authentication**: The JWT itself proves the bearer has been authenticated because it was issued by a trusted authority (signed with a secret key)
-2. **Authorization**: The JWT can carry claims (like user roles or permissions) that services can use to make authorization decisions
+1. 认证：JWT 由受信任的签发方签名（使用密钥），本身即可证明持有者已通过认证
+2. 鉴权：JWT 可携带声明（如用户角色或权限），服务据此进行授权决策
 
 ```go
 var JWTAuth = JWTSecurity("jwt", func() {
     Description("JWT-based authentication and authorization")
-    // Scopes define permissions that can be checked against JWT claims
+    // 作用域（Scopes）定义可与 JWT 声明校验的权限
     Scope("api:read", "Read-only access")
     Scope("api:write", "Read and write access")
 })
 ```
 
-#### Understanding Scopes
+#### 关于作用域（Scopes）
 
-Scopes are named permissions that represent what actions a client is allowed to perform. When using JWTs:
+作用域是表示客户端被允许执行的操作的命名权限。使用 JWT 时：
 
-1. The authentication server includes granted scopes in the JWT when issued
-2. Your service validates these scopes against the required scopes for each endpoint
-3. If the JWT doesn't contain the required scopes, the request is denied
+1. 认证服务器在签发 JWT 时包含授予的作用域
+2. 服务在每个端点校验请求携带的作用域是否满足要求
+3. 若 JWT 未包含所需作用域，请求将被拒绝
 
-### API Keys
+### API Key
 
-API keys are simple string tokens that clients include with their requests. While commonly called "API Key Authentication", they are more accurately described as an authorization mechanism:
+API Key 是客户端随请求附带的简单字符串令牌。尽管常被称为“API Key 认证”，它更准确地说是授权机制：
 
-- They don't prove identity (can be easily shared or stolen)
-- They primarily serve to identify the source of requests and enforce rate limiting
-- They're simpler than JWTs but offer less security and flexibility
+- 不能真正证明身份（易被共享或窃取）
+- 主要用于识别请求来源与实施限流
+- 比 JWT 更简单，但安全性与灵活性较低
 
 ```go
 var APIKeyAuth = APIKeySecurity("api_key", func() {
@@ -54,57 +54,57 @@ var APIKeyAuth = APIKeySecurity("api_key", func() {
 })
 ```
 
-Common uses for API keys:
-- Rate limiting by client
-- Usage tracking
-- Simple project/team identification
-- Basic access control for public APIs
+常见用途：
+- 按客户端限流
+- 使用情况追踪
+- 简单的项目/团队识别
+- 公开 API 的基础访问控制
 
-### Basic Authentication
+### 基本认证（Basic Authentication）
 
-Basic Authentication is a simple authentication scheme built into the HTTP protocol:
+Basic Auth 是内建于 HTTP 协议的简单认证方案：
 
-- Clients send credentials (username/password) with each request
-- Credentials are Base64 encoded, but not encrypted (requires HTTPS)
-- Provides true authentication but no built-in authorization mechanism
+- 客户端在每次请求中发送凭据（用户名/密码）
+- 凭据以 Base64 编码但不加密（必须使用 HTTPS）
+- 提供真实的认证，但不包含内建的鉴权机制
 
 ```go
 var BasicAuth = BasicAuthSecurity("basic", func() {
     Description("Username/password authentication")
-    // Scopes here define permissions that can be granted after successful authentication
+    // 作用域用于在认证成功后授予权限
     Scope("api:read", "Read-only access")
 })
 ```
 
 ### OAuth2
 
-OAuth2 is a comprehensive authorization framework that supports multiple flows for different types of applications. It separates:
+OAuth2 是一个完整的授权框架，支持针对不同应用类型的多种流程。其将以下职责分离：
 
-1. Authentication (handled by an authorization server)
-2. Authorization (grants specific permissions via access tokens)
-3. Resource access (using the access tokens)
+1. 认证（由授权服务器处理）
+2. 授权（通过访问令牌授予特定权限）
+3. 资源访问（使用访问令牌）
 
 ```go
 var OAuth2Auth = OAuth2Security("oauth2", func() {
-    // Define the OAuth2 flow endpoints
+    // 定义 OAuth2 授权码流程的端点
     AuthorizationCodeFlow(
-        "http://auth.example.com/authorize",  // Where to request authorization
-        "http://auth.example.com/token",      // Where to exchange code for token
-        "http://auth.example.com/refresh",    // Where to refresh expired tokens
+        "http://auth.example.com/authorize",  // 请求授权的地址
+        "http://auth.example.com/token",      // 交换 code 为 token 的地址
+        "http://auth.example.com/refresh",    // 刷新过期 token 的地址
     )
-    // Define available permissions
+    // 定义可用权限
     Scope("api:read", "Read-only access")
     Scope("api:write", "Read and write access")
 })
 ```
 
-## Applying Security Schemes
+## 应用安全方案
 
-Security schemes can be applied at different levels:
+安全方案可在不同层级应用：
 
-### Method Level Security
+### 方法级安全（Method Level Security）
 
-Secure individual methods with one or more schemes:
+为单个方法启用一个或多个安全方案：
 
 ```go
 Method("secure_endpoint", func() {
@@ -124,9 +124,9 @@ Method("secure_endpoint", func() {
 })
 ```
 
-### Multiple Schemes
+### 多方案组合（Multiple Schemes）
 
-Combine multiple security schemes for enhanced security:
+组合多个安全方案以增强安全性：
 
 ```go
 Method("doubly_secure", func() {
@@ -142,17 +142,17 @@ Method("doubly_secure", func() {
     
     HTTP(func() {
         POST("/secure")
-        Param("key:k")  // API key in query parameter
+        Param("key:k")  // 在查询参数中传递 API key
         Response(StatusOK)
     })
 })
 ```
 
-## Transport-Specific Configuration
+## 传输层特定配置
 
-### HTTP Security Configuration
+### HTTP 安全配置
 
-Configure how security credentials are transmitted over HTTP:
+配置凭据如何通过 HTTP 传输：
 
 ```go
 Method("secure_endpoint", func() {
@@ -163,16 +163,16 @@ Method("secure_endpoint", func() {
     })
     HTTP(func() {
         GET("/secure")
-        Header("token:Authorization") // JWT in Authorization header
+        Header("token:Authorization") // 在 Authorization 头中传递 JWT
         Response(StatusOK)
         Response("unauthorized", StatusUnauthorized)
     })
 })
 ```
 
-### gRPC Security Configuration
+### gRPC 安全配置
 
-Configure security for gRPC transport:
+为 gRPC 传输配置安全：
 
 ```go
 Method("secure_endpoint", func() {
@@ -184,8 +184,8 @@ Method("secure_endpoint", func() {
     })
     GRPC(func() {
         Metadata(func() {
-            Attribute("token:authorization")  // JWT in metadata
-            Attribute("api_key:x-api-key")   // API key in metadata
+            Attribute("token:authorization")  // 在元数据中传递 JWT
+            Attribute("api_key:x-api-key")   // 在元数据中传递 API key
         })
         Response(CodeOK)
         Response("unauthorized", CodeUnauthenticated)
@@ -193,9 +193,9 @@ Method("secure_endpoint", func() {
 })
 ```
 
-## Error Handling
+## 错误处理
 
-Define security-related errors consistently:
+一致地定义与安全相关的错误：
 
 ```go
 Service("secure_service", func() {
@@ -214,33 +214,31 @@ Service("secure_service", func() {
 })
 ```
 
-## Best Practices
+## 最佳实践
 
-{{< alert title="Security Implementation Guidelines" color="primary" >}}
-**Authentication Design**
-- Use appropriate security schemes for your use case
-- Implement proper token validation
-- Secure credential storage
-- Use HTTPS in production
+{{< alert title="安全实现指引" color="primary" >}}
+认证设计
+- 针对场景选择合适的安全方案
+- 实施正确的令牌校验
+- 安全地存储凭据
+- 生产环境必须使用 HTTPS
 
-**Authorization Design**
-- Define clear scope hierarchies
-- Use fine-grained permissions
-- Implement role-based access control
-- Validate all security requirements
+鉴权设计
+- 定义清晰的作用域层级
+- 使用细粒度权限
+- 实施基于角色的访问控制（RBAC）
+- 校验所有安全要求
 
-**General Tips**
-- Document security requirements
-- Implement proper error handling
-- Use secure defaults
-- Regular security audits
+通用建议
+- 明确记录安全要求
+- 实施完善的错误处理
+- 使用安全的默认值
+- 定期进行安全审计
 {{< /alert >}}
 
-## Implementing Security
+## 安全的具体实现
 
-When you define security schemes in your design, Goa generates an `Auther`
-interface specific to your design that your service must implement. This
-interface defines methods for each security scheme you've specified:
+当你在设计中定义安全方案时，Goa 会根据你的设计生成一个特定的 `Auther` 接口，服务需实现该接口。该接口为你指定的每种安全方案定义方法：
 
 ```go
 // Auther defines the security requirements for the service.
@@ -259,10 +257,9 @@ type Auther interface {
 }
 ```
 
-Your service must implement these methods to handle the
-authentication/authorization logic. Here's how to implement each:
+服务必须实现这些方法来处理认证/鉴权逻辑。以下示例展示具体实现：
 
-### Basic Auth Implementation
+### Basic Auth 实现
 
 ```go
 // BasicAuth implements the authorization logic  for the "basic" security scheme.
@@ -270,7 +267,7 @@ func (s *svc) BasicAuth(ctx context.Context, user, pass string, scheme *security
     if user != "goa" || pass != "rocks" {
         return ctx, ErrUnauthorized
     }
-    // Store auth info in context for later use
+    // 将认证信息存入上下文，供后续使用
     ctx = contextWithAuthInfo(ctx, authInfo{
         user: user,
     })
@@ -278,14 +275,14 @@ func (s *svc) BasicAuth(ctx context.Context, user, pass string, scheme *security
 }
 ```
 
-### JWT Implementation
+### JWT 实现
 
 ```go
 // JWTAuth implements the authorization logic for the "jwt" security scheme.
 func (s *svc) JWTAuth(ctx context.Context, token string, scheme *security.JWTScheme) (context.Context, error) {
     claims := make(jwt.MapClaims)
     
-    // Parse and validate JWT token
+    // 解析并校验 JWT token
     _, err := jwt.ParseWithClaims(token, claims, func(_ *jwt.Token) (interface{}, error) { 
         return Key, nil 
     })
@@ -293,7 +290,7 @@ func (s *svc) JWTAuth(ctx context.Context, token string, scheme *security.JWTSch
         return ctx, ErrInvalidToken
     }
 
-    // Validate required scopes
+    // 校验所需作用域
     if claims["scopes"] == nil {
         return ctx, ErrInvalidTokenScopes
     }
@@ -309,7 +306,7 @@ func (s *svc) JWTAuth(ctx context.Context, token string, scheme *security.JWTSch
         return ctx, securedservice.InvalidScopes(err.Error())
     }
 
-    // Store claims in context
+    // 将声明存入上下文
     ctx = contextWithAuthInfo(ctx, authInfo{
         claims: claims,
     })
@@ -317,7 +314,7 @@ func (s *svc) JWTAuth(ctx context.Context, token string, scheme *security.JWTSch
 }
 ```
 
-### API Key Implementation
+### API Key 实现
 
 ```go
 // APIKeyAuth implements the authorization logic for service "secured_service"
@@ -333,21 +330,21 @@ func (s *securedServicesrvc) APIKeyAuth(ctx context.Context, key string, scheme 
 }
 ```
 
-### Creating JWT Tokens
+### 创建 JWT 令牌
 
-When implementing a sign-in endpoint that issues tokens:
+在实现签发令牌的登录端点时：
 
 ```go
 // Signin creates a valid JWT token for authentication
 func (s *svc) Signin(ctx context.Context, p *gensvc.SigninPayload) (*gensvc.Creds, error) {
-    // Create JWT token with claims
+    // 创建包含声明的 JWT 令牌
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
         "nbf":    time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
         "iat":    time.Now().Unix(),
         "scopes": []string{"api:read", "api:write"},
     })
 
-    // Sign the token
+    // 签名令牌
     t, err := token.SignedString(Key)
     if err != nil {
         return nil, err
@@ -361,16 +358,16 @@ func (s *svc) Signin(ctx context.Context, p *gensvc.SigninPayload) (*gensvc.Cred
 }
 ```
 
-### How It Works
-When you implement security schemes in your Goa service, here's how the authentication and authorization flow works:
+### 工作机制
+当你在 Goa 服务中实现安全方案后，认证与鉴权流程如下：
 
-1. Goa generates endpoint wrappers that handle security scheme validation
-2. Each endpoint wrapper calls the appropriate auth functions you've implemented
-3. Your auth functions validate credentials and return an enhanced context
-4. If auth succeeds, the endpoint handler is called with the enhanced context
-5. If auth fails, an error is returned to the client
+1. Goa 生成的端点包装器负责处理安全方案校验
+2. 每个端点包装器调用你实现的对应认证函数
+3. 你的认证函数校验凭据并返回增强的上下文
+4. 若认证通过，端点处理器将以增强的上下文被调用
+5. 若认证失败，则向客户端返回错误
 
-For example, with multiple schemes:
+例如，在多方案组合下：
 
 ```go
 // Generated endpoint wrapper
@@ -378,17 +375,17 @@ func NewDoublySecureEndpoint(s Service, authJWTFn security.AuthJWTFunc, authAPIK
     return func(ctx context.Context, req any) (any, error) {
         p := req.(*DoublySecurePayload)
         
-        // Validate JWT first
+        // 先校验 JWT
         ctx, err = authJWTFn(ctx, p.Token, &sc)
         if err == nil {
-            // Then validate API key
+            // 再校验 API key
             ctx, err = authAPIKeyFn(ctx, p.Key, &sc)
         }
         if err != nil {
             return nil, err
         }
         
-        // Call service method if both auth checks pass
+        // 两次校验均通过后调用服务方法
         return s.DoublySecure(ctx, p)
     }
 }

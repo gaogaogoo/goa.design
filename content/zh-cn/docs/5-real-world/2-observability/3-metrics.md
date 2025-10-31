@@ -1,29 +1,27 @@
----
-title: "Service Metrics"
-description: "Implementing service metrics with OpenTelemetry"
+title: "服务度量"
+description: "使用 OpenTelemetry 实现服务度量"
 weight: 3
 ---
 
-Modern applications need quantitative data to understand their behavior and performance.
-How many requests are we handling? How long do they take? Are we running out of
-resources? Metrics help answer these questions by providing numerical measurements
-of your service's operation.
+现代应用需要定量数据来理解其行为和性能。
+我们处理了多少请求？它们耗时多久？我们的资源是否即将耗尽？
+度量通过为服务运行提供数值化的观测，帮助回答这些问题。
 
-## Understanding Metrics
+## 认识度量
 
-OpenTelemetry provides several metric instruments, each designed for specific measurement needs. Every instrument is defined by:
-- **Name**: What you're measuring (e.g., `http.requests.total`)
-- **Kind**: How the value behaves (e.g., only increases, can go up and down)
-- **Unit**: Optional measurement unit (e.g., `ms`, `bytes`)
-- **Description**: Optional explanation of what the metric represents
+OpenTelemetry 提供多种度量仪表，每种都为特定的测量需求设计。每个仪表由以下要素定义：
+- **名称**：你在测量什么（例如 `http.requests.total`）
+- **类型**：数值如何变化（例如只递增、可上下变化）
+- **单位**：可选的度量单位（例如 `ms`、`bytes`）
+- **描述**：可选的说明，解释该度量代表什么
 
-Let's explore each type of instrument:
+下面分别介绍各类仪表：
 
-### Synchronous Instruments
-These instruments are called directly in your code when something happens:
+### 同步仪表
+当事件发生时，这类仪表会在你的代码中被直接调用：
 
-1. **Counter**
-   A value that only goes up, like an odometer in a car:
+1. **计数器（Counter）**
+   只会递增的数值，就像汽车的里程表：
    ```go
    requestCounter, _ := meter.Int64Counter("http.requests.total",
        metric.WithDescription("Total number of HTTP requests"),
@@ -32,13 +30,13 @@ These instruments are called directly in your code when something happens:
    // Usage: Increment when request received
    requestCounter.Add(ctx, 1)
    ```
-   Perfect for:
-   - Request counts
-   - Bytes processed
-   - Tasks completed
+   适用于：
+   - 请求计数
+   - 处理的字节数
+   - 完成的任务数
 
-2. **UpDownCounter**
-   A value that can increase or decrease, like items in a queue:
+2. **升降计数器（UpDownCounter）**
+   可增可减的数值，类似队列中的项目数量：
    ```go
    queueSize, _ := meter.Int64UpDownCounter("queue.items",
        metric.WithDescription("Current items in queue"),
@@ -48,13 +46,13 @@ These instruments are called directly in your code when something happens:
    queueSize.Add(ctx, 1)  // Item added
    queueSize.Add(ctx, -1) // Item removed
    ```
-   Perfect for:
-   - Queue lengths
-   - Number of active connections
-   - Thread pool size
+   适用于：
+   - 队列长度
+   - 活跃连接数
+   - 线程池大小
 
-3. **Histogram**
-   Tracks the distribution of values, like request durations:
+3. **直方图（Histogram）**
+   跟踪数值分布，例如请求持续时间：
    ```go
    latency, _ := meter.Float64Histogram("http.request.duration",
        metric.WithDescription("HTTP request duration"),
@@ -63,16 +61,16 @@ These instruments are called directly in your code when something happens:
    // Usage: Record value when request completes
    latency.Record(ctx, time.Since(start).Milliseconds())
    ```
-   Perfect for:
-   - Request latencies
-   - Response sizes
-   - Queue wait times
+   适用于：
+   - 请求延迟
+   - 响应大小
+   - 队列等待时间
 
-### Asynchronous Instruments
-These instruments are collected periodically by callbacks you register:
+### 异步仪表
+这类仪表通过你注册的回调函数定期采集：
 
-1. **Asynchronous Counter**
-   For values that only increase, but you only have access to the total:
+1. **异步计数器（Asynchronous Counter）**
+   用于只会递增但你只能获取总量的数值：
    ```go
    bytesReceived, _ := meter.Int64ObservableCounter("network.bytes.received",
        metric.WithDescription("Total bytes received"),
@@ -84,13 +82,13 @@ These instruments are collected periodically by callbacks you register:
            bytesReceived.Observe(ctx, getNetworkStats().TotalBytesReceived)
        })
    ```
-   Perfect for:
-   - Total bytes transferred
-   - System uptime
-   - Cumulative events from external systems
+   适用于：
+   - 传输的总字节数
+   - 系统运行时长
+   - 外部系统的累计事件
 
-2. **Asynchronous UpDownCounter**
-   For values that can change either way, but you only see the current state:
+2. **异步升降计数器（Asynchronous UpDownCounter）**
+   用于可增可减但你只查看当前状态的数值：
    ```go
    goroutines, _ := meter.Int64ObservableUpDownCounter("system.goroutines",
        metric.WithDescription("Current number of goroutines"),
@@ -102,13 +100,13 @@ These instruments are collected periodically by callbacks you register:
            goroutines.Observe(ctx, int64(runtime.NumGoroutine()))
        })
    ```
-   Perfect for:
-   - Current connection count
-   - Resource pool size
-   - Thread count
+   适用于：
+   - 当前连接数
+   - 资源池大小
+   - 线程数
 
-3. **Asynchronous Gauge**
-   For current-value measurements that you periodically sample:
+3. **异步仪表（Gauge）**
+   用于定期采样的当前值测量：
    ```go
    cpuUsage, _ := meter.Float64ObservableGauge("system.cpu.usage",
        metric.WithDescription("CPU usage percentage"),
@@ -120,108 +118,104 @@ These instruments are collected periodically by callbacks you register:
            cpuUsage.Observe(ctx, getCPUUsage())
        })
    ```
-   Perfect for:
-   - CPU usage
-   - Memory usage
-   - Temperature readings
-   - Disk space
+   适用于：
+   - CPU 使用率
+   - 内存使用量
+   - 温度读数
+   - 磁盘空间
 
-### Choosing the Right Instrument
+### 选择合适的仪表
 
-1. Ask yourself these questions:
-   - Do I need to record values as they happen (synchronous) or periodically check state (asynchronous)?
-   - Can the value only go up (Counter) or both up and down (UpDownCounter)?
-   - Do I need to analyze the distribution of values (Histogram)?
-   - Am I measuring a current state (Gauge)?
+1. 先自问以下问题：
+   - 我需要在事件发生时记录数值（同步），还是定期检查状态（异步）？
+   - 这个数值只会上升（计数器）还是会上下变化（升降计数器）？
+   - 我是否需要分析数值的分布（直方图）？
+   - 我是在测量某个当前状态（仪表）吗？
 
-2. Common use cases:
-   - Counting events → Counter
-   - Measuring durations → Histogram
-   - Resource usage → Asynchronous Gauge
-   - Queue sizes → UpDownCounter
-   - System stats → Asynchronous instruments
+2. 常见用法：
+   - 事件计数 → 计数器
+   - 持续时间测量 → 直方图
+   - 资源使用 → 异步仪表
+   - 队列大小 → 升降计数器
+   - 系统统计 → 异步仪表
 
-## Automatic Metrics
+## 自动度量
 
-Clue automatically instruments several key metrics for your service. These give
-you immediate visibility without writing any code:
+Clue 会为你的服务自动采集多个关键度量。这些度量无需编写代码即可提供即时可见性：
 
-### HTTP Server Metrics
-When you wrap your HTTP handlers with OpenTelemetry middleware:
+### HTTP 服务端度量
+当你使用 OpenTelemetry 中间件包裹 HTTP 处理器：
 ```go
 mux.Use(otelhttp.NewMiddleware("service"))
 ```
 
-You automatically get:
-- **Request Counts**: Total requests by path, method, and status code
-- **Duration Histograms**: How long requests take to process
-- **In-Flight Requests**: Current number of active requests
-- **Response Sizes**: Distribution of response payload sizes
+你会自动获得：
+- **请求计数**：按路径、方法和状态码统计的总请求数
+- **时长直方图**：请求处理耗时的分布
+- **进行中请求**：当前活跃请求数
+- **响应大小**：响应负载大小的分布
 
-### gRPC Server Metrics
-When you create a gRPC server with OpenTelemetry instrumentation:
+### gRPC 服务端度量
+当你创建带有 OpenTelemetry 采集的 gRPC 服务器：
 ```go
 server := grpc.NewServer(
     grpc.StatsHandler(otelgrpc.NewServerHandler()))
 ```
 
-You automatically get:
-- **RPC Counts**: Total RPCs by method and status code
-- **Duration Histograms**: How long RPCs take to complete
-- **In-Flight RPCs**: Current number of active RPCs
-- **Message Sizes**: Distribution of request/response sizes
+你会自动获得：
+- **RPC 计数**：按方法和状态码统计的 RPC 总数
+- **时长直方图**：RPC 完成所需时间的分布
+- **进行中 RPC**：当前活跃 RPC 数量
+- **消息大小**：请求/响应大小的分布
 
-## Custom Metrics
+## 自定义度量
 
-While automatic metrics are helpful, you often need to track business-specific
-measurements. Here's how to create and use custom metrics effectively:
+尽管自动度量很有帮助，你通常还需要跟踪与业务相关的特定测量。下面介绍如何高效创建和使用自定义度量：
 
-### Creating Metrics
+### 创建度量
 
-First, get a meter for your service:
+首先，为你的服务获取一个 meter：
 ```go
 meter := otel.Meter("myservice")
 ```
 
-Then create the metrics you need:
+然后创建所需的度量：
 
-1. **Counter Example**: Track business events
+1. **计数器示例**：跟踪业务事件
    ```go
    orderCounter, _ := meter.Int64Counter("orders.total",
        metric.WithDescription("Total number of orders processed"),
        metric.WithUnit("{orders}"))
    ```
 
-2. **Histogram Example**: Measure processing times
+2. **直方图示例**：测量处理时间
    ```go
    processingTime, _ := meter.Float64Histogram("order.processing_time",
        metric.WithDescription("Time taken to process orders"),
        metric.WithUnit("ms"))
    ```
 
-3. **Gauge Example**: Monitor queue depth
+3. **升降计数器示例**：监控队列深度
    ```go
    queueDepth, _ := meter.Int64UpDownCounter("orders.queue_depth",
        metric.WithDescription("Current number of orders in queue"),
        metric.WithUnit("{orders}"))
    ```
 
-### Using Metrics
+### 使用度量
 
-Let's look at a complete example that demonstrates how to use different types of
-metrics in a real-world scenario. This example shows how to monitor an order
-processing system:
+下面是一个完整示例，它展示了如何在真实场景中使用不同类型的度量。该示例演示如何监控订单处理系统：
 
 ```go
 func processOrder(ctx context.Context, order *Order) error {
     // Track total orders (counter)
-    // We increment the counter by 1 for each order, adding attributes for analysis
+    // 每处理一个订单将计数器加 1，并添加属性用于分析
     orderCounter.Add(ctx, 1,
         attribute.String("type", order.Type),
         attribute.String("customer", order.CustomerID))
 
     // Measure processing time (histogram)
-    // We use a defer to ensure we always record the duration, even if the function returns early
+    // 使用 defer 确保始终记录耗时，即使函数提前返回
     start := time.Now()
     defer func() {
         processingTime.Record(ctx,
@@ -230,31 +224,27 @@ func processOrder(ctx context.Context, order *Order) error {
     }()
 
     // Monitor queue depth (gauge)
-    // We track the queue size by incrementing when adding and decrementing when done
-    queueDepth.Add(ctx, 1)  // Increment when adding to queue
-    defer queueDepth.Add(ctx, -1)  // Decrement when done
+    // 通过入队加一、处理完成减一，跟踪队列大小
+    queueDepth.Add(ctx, 1)  // 入队时加一
+    defer queueDepth.Add(ctx, -1)  // 完成时减一
 
     return processOrderInternal(ctx, order)
 }
 ```
 
-This example demonstrates several best practices:
-- Using counters for discrete events (orders processed)
-- Using histograms for durations (processing time)
-- Using gauges for current state (queue depth)
-- Adding relevant attributes for analysis
-- Proper cleanup with defer statements
+该示例体现了多项最佳实践：
+- 使用计数器记录离散事件（已处理订单数）
+- 使用直方图记录时长（处理时间）
+- 使用升降计数器记录当前状态（队列深度）
+- 添加相关属性以便分析
+- 使用 defer 进行正确的清理
 
-## Service Level Indicators (SLIs)
+## 服务等级指标（SLI）
 
-Service Level Indicators are key metrics that help you understand your service's
-health and performance. The four golden signals (Latency, Traffic, Errors, and
-Saturation) provide a comprehensive view of your service's behavior. Let's
-implement each one:
+服务等级指标是帮助你理解服务健康状况和性能的关键度量。四大黄金信号（延迟、流量、错误和饱和度）能全面展现服务行为。下面分别实现：
 
-### 1. Latency
-Latency measures how long it takes to serve requests. This example shows how to
-track request duration in an HTTP middleware:
+### 1. 延迟（Latency）
+延迟衡量处理请求所需的时间。以下示例展示如何在 HTTP 中间件中跟踪请求持续时间：
 
 ```go
 // Create a histogram to track request durations
@@ -275,8 +265,8 @@ func middleware(next http.Handler) http.Handler {
 }
 ```
 
-### 2. Traffic
-Traffic measures the demand on your system. This example counts HTTP requests:
+### 2. 流量（Traffic）
+流量衡量系统的需求。以下示例统计 HTTP 请求数量：
 
 ```go
 // Create a counter for incoming requests
@@ -296,8 +286,8 @@ func middleware(next http.Handler) http.Handler {
 }
 ```
 
-### 3. Errors
-Error tracking helps identify issues in your service. This example counts HTTP 5xx errors:
+### 3. 错误（Errors）
+错误跟踪有助于识别服务中的问题。以下示例统计 HTTP 5xx 错误：
 
 ```go
 // Create a counter for server errors
@@ -322,8 +312,8 @@ func middleware(next http.Handler) http.Handler {
 }
 ```
 
-### 4. Saturation
-Saturation measures how "full" your service is. This example monitors system resources:
+### 4. 饱和度（Saturation）
+饱和度衡量服务“有多满”。以下示例监控系统资源：
 
 ```go
 // Create gauges for CPU and memory usage
@@ -353,12 +343,12 @@ go func() {
 }()
 ```
 
-## Metric Exporters
+## 度量导出器
 
-Once you've instrumented your code with metrics, you need to export them to a monitoring system. Here are examples of common exporters:
+在完成代码的度量采集后，你需要将度量导出到监控系统。以下是常见导出器的示例：
 
 ### Prometheus
-Prometheus is a popular choice for metrics collection. Here's how to configure it:
+Prometheus 是常用的度量采集方案。如下配置方式：
 
 ```go
 // Create a Prometheus exporter with custom histogram boundaries
@@ -369,10 +359,10 @@ exporter, err := prometheus.New(prometheus.Config{
 })
 ```
 
-The histogram boundaries are crucial for accurate latency measurements. Choose boundaries that cover your expected latency range.
+直方图边界对精确测量延迟至关重要。选择能够覆盖预期延迟范围的边界。
 
-### OpenTelemetry Protocol (OTLP)
-OTLP is the native protocol for OpenTelemetry. Use it to send metrics to collectors:
+### OpenTelemetry 协议（OTLP）
+OTLP 是 OpenTelemetry 的原生协议。使用它将度量发送到采集器：
 
 ```go
 // Create an OTLP exporter connecting to a collector
@@ -381,41 +371,41 @@ exporter, err := otlpmetricgrpc.New(ctx,
     otlpmetricgrpc.WithTLSCredentials(insecure.NewCredentials()))
 ```
 
-Remember to configure TLS appropriately in production environments.
+在生产环境中请正确配置 TLS。
 
-## Best Practices
+## 最佳实践
 
-### 1. Naming Conventions
-Follow a consistent pattern to make metrics discoverable and understandable:
+### 1. 命名约定
+遵循一致的模式使度量更易发现和理解：
 ```
 <namespace>.<type>.<name>
 ```
 
-For example:
-- `http.request.duration` - HTTP request latency
-- `database.connection.count` - Number of DB connections
-- `order.processing.time` - Order processing duration
+例如：
+- `http.request.duration` - HTTP 请求延迟
+- `database.connection.count` - 数据库连接数
+- `order.processing.time` - 订单处理时长
 
-The pattern helps users find and understand metrics without referring to documentation.
+该模式有助于用户在不查阅文档的情况下找到并理解度量。
 
-### 2. Units
-Always specify units in metric descriptions to avoid ambiguity:
-- Time: `ms` (milliseconds), `s` (seconds)
-- Bytes: `By` (bytes)
-- Counts: `{requests}`, `{errors}`
-- Ratios: `1` (dimensionless)
+### 2. 单位
+始终在度量描述中标注单位以避免歧义：
+- 时间：`ms`（毫秒）、`s`（秒）
+- 字节：`By`（字节）
+- 计数：`{requests}`、`{errors}`
+- 比率：`1`（无量纲）
 
-Using consistent units makes metrics comparable and prevents conversion errors.
+使用一致的单位能让度量可比较并避免换算错误。
 
-### 3. Performance
-Consider these factors to maintain good performance:
+### 3. 性能
+为保持良好性能，请考虑以下因素：
 
-- **Collection intervals**: Choose appropriate intervals based on metric volatility
-  - High-frequency changes: 1-5 seconds
-  - Stable metrics: 15-60 seconds
-  - Resource-intensive metrics: 5+ minutes
+- **采集间隔**：根据度量波动性选择合适的采集频率
+  - 高频变化：1-5 秒
+  - 稳定度量：15-60 秒
+  - 资源开销较大：5 分钟以上
 
-- **Batch updates**: Group metric updates when possible
+- **批量更新**：尽可能将度量更新归并
   ```go
   // Instead of this:
   counter.Add(ctx, 1)
@@ -425,12 +415,12 @@ Consider these factors to maintain good performance:
   counter.Add(ctx, 2)
   ```
 
-- **Cardinality growth**: Monitor the number of unique time series
-  - Set limits on attribute combinations
-  - Regularly review and clean up unused metrics
-  - Use recording rules for high-cardinality metrics
+- **基数增长**：监控唯一时间序列的数量
+  - 限制属性组合数量
+  - 定期审查并清理未使用的度量
+  - 对高基数度量使用记录规则
 
-- **Aggregation**: Pre-aggregate high-volume metrics
+- **聚合**：对高流量度量进行预聚合
   ```go
   // Instead of recording every request:
   histogram.Record(ctx, duration)
@@ -442,17 +432,17 @@ Consider these factors to maintain good performance:
   }
   ```
 
-### 4. Documentation
-Document each metric thoroughly to help users understand and use them effectively:
+### 4. 文档
+为每个度量编写详尽文档，帮助用户理解并有效使用：
 
-Required documentation:
-- **Clear description**: What the metric measures and why it's important
-- **Unit of measurement**: The specific unit used (e.g., milliseconds, bytes)
-- **Valid attribute values**: List of expected values for each attribute
-- **Update frequency**: How often the metric is updated
-- **Retention period**: How long the metric data is kept
+文档应包含：
+- **清晰描述**：该度量测量什么以及其重要性
+- **度量单位**：使用的具体单位（如毫秒、字节）
+- **属性有效值**：每个属性的预期取值范围
+- **更新频率**：该度量的更新频率
+- **保留周期**：度量数据的保留时长
 
-Example documentation:
+示例文档：
 ```go
 // http.request.duration measures the time taken to process HTTP requests.
 // Unit: milliseconds
@@ -468,40 +458,40 @@ requestDuration, _ := meter.Float64Histogram(
     metric.WithUnit("ms"))
 ```
 
-## Learn More
+## 进一步了解
 
-For more detailed information about metrics:
+关于度量的更多详细信息：
 
 - [OpenTelemetry Metrics](https://opentelemetry.io/docs/concepts/signals/metrics/)
-  The official guide to OpenTelemetry metrics concepts and implementation.
+  OpenTelemetry 度量的官方概念与实现指南。
 
 - [Metric Semantic Conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/)
-  Standard names and attributes for common metrics.
+  常用度量的标准命名与属性。
 
 - [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
-  Excellent guidance on metric naming and labels.
+  关于度量命名和标签的优秀实践指南。
 
 - [Four Golden Signals](https://sre.google/sre-book/monitoring-distributed-systems/)
-  Google's guide to essential service metrics.
+  Google 关于关键服务度量的指南。
 
-These resources provide deeper insights into metric implementation and best practices.
+这些资源可帮助你深入了解度量的实现与最佳实践。
 
-### Choosing Attributes
+### 选择属性
 
-Attributes provide context to your metrics, making them more useful for analysis. However, choosing the right attributes requires careful consideration to avoid performance issues and maintain data quality.
+属性为度量提供上下文，使其更有助于分析。但选择合适的属性需要谨慎，以避免性能问题并保持数据质量。
 
-Good attributes to include:
-- **High cardinality**: `customer_type`, `order_status`, `error_code`
-  These attributes have a limited set of possible values and provide meaningful grouping.
-- **Business relevant**: `subscription_tier`, `payment_method`
-  These help correlate metrics with business outcomes.
-- **Technical grouping**: `region`, `datacenter`, `instance_type`
-  These enable operational analysis and troubleshooting.
+推荐包含的属性：
+- **高基数**：`customer_type`、`order_status`、`error_code`
+  这些属性的可能取值有限，能够提供有意义的分组。
+- **业务相关**：`subscription_tier`、`payment_method`
+  有助于将度量与业务结果相关联。
+- **技术分组**：`region`、`datacenter`、`instance_type`
+  便于运维分析和故障排查。
 
-Attributes to avoid:
-- **Unique IDs**: Don't use `user_id`, `order_id` (use these in traces instead)
-  These create too many unique time series and can overwhelm your metrics storage.
-- **Timestamps**: Metrics already have timestamps
-  Adding timestamp attributes is redundant and wastes storage.
-- **Sensitive data**: Never include PII or secrets
-  Metrics are often widely accessible in an organization.
+应避免的属性：
+- **唯一 ID**：不要使用 `user_id`、`order_id`（应在追踪中使用）
+  这些属性会产生过多的唯一时间序列，可能使度量存储不堪重负。
+- **时间戳**：度量本身已经带有时间戳
+  额外添加时间戳属性是冗余的，并浪费存储。
+- **敏感数据**：切勿包含 PII 或密钥
+  度量在组织内部通常被广泛访问。

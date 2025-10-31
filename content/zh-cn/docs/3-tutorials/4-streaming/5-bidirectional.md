@@ -1,17 +1,14 @@
 ---
-title: "Implementing Bidirectional Streaming"
-linkTitle: Bidirectional
+title: "实现双向流式传输"
+linkTitle: 双向
 weight: 5
 ---
 
-Once you've designed your bidirectional streaming endpoints using Goa's
-`StreamingPayload` and `StreamingResult` DSL, the next step is to implement both
-sides of the streaming connection. This guide walks through implementing both
-client and server components of a bidirectional streaming endpoint in Goa.
+一旦你使用 Goa 的 `StreamingPayload` 和 `StreamingResult` DSL 设计好了双向流式端点，下一步就是实现连接两端的逻辑。本文将引导你在 Goa 中实现一个双向流式端点的客户端与服务端组件。
 
-## Design
+## 设计
 
-Assuming the following design:
+假设有如下设计：
 
 ```go
 var _ = Service("logger", func() {
@@ -27,37 +24,35 @@ var _ = Service("logger", func() {
 })
 ```
 
-## Client-Side Implementation
+## 客户端实现
 
-When you define a bidirectional streaming method, Goa generates specific stream
-interfaces for the client to implement. These interfaces facilitate both sending
-and receiving streamed data.
+当你定义了一个双向流式方法后，Goa 会为客户端生成特定的流接口以供实现。这些接口同时支持发送与接收流式数据。
 
-### Client Stream Interface
+### 客户端流接口
 
-The client stream interface includes methods for both sending and receiving data:
+客户端流接口包含用于同时发送和接收数据的方法：
 
 ```go
-// Interface that the client must satisfy
+// 客户端必须满足的接口
 type MonitorClientStream interface {
-    // Send streams instances of "LogFilter"
+    // Send 会将 "LogFilter" 的实例以流式发送
     Send(*LogFilter) error
-    // Recv returns the next result in the stream
+    // Recv 返回流中的下一个结果
     Recv() (*LogEntry, error)
-    // Close closes the stream
+    // Close 关闭流
     Close() error
 }
 ```
 
-### Key Methods
+### 关键方法
 
-- **Send:** Sends filter updates to the server. Can be called multiple times to update filtering criteria.
-- **Recv:** Receives log entries from the server that match the current filters.
-- **Close:** Closes the bidirectional stream. After calling Close, both Send and Recv will return errors.
+- **Send：** 将过滤器更新发送到服务器。可多次调用以更新过滤条件。
+- **Recv：** 接收与当前过滤器匹配的服务器日志条目。
+- **Close：** 关闭双向流。调用 Close 后，Send 与 Recv 均会返回错误。
 
-### Example Implementation
+### 示例实现
 
-Here's an example of implementing a client-side bidirectional streaming endpoint:
+下面是一个实现客户端双向流式端点的示例：
 
 ```go
 func monitorLogs(client logger.Client, initialFilter *LogFilter) error {
@@ -67,7 +62,7 @@ func monitorLogs(client logger.Client, initialFilter *LogFilter) error {
     }
     defer stream.Close()
 
-    // Start a goroutine to handle receiving logs
+    // 启动一个 goroutine 处理日志接收
     go func() {
         for {
             logEntry, err := stream.Recv()
@@ -82,12 +77,12 @@ func monitorLogs(client logger.Client, initialFilter *LogFilter) error {
         }
     }()
 
-    // Send initial filter
+    // 发送初始过滤器
     if err := stream.Send(initialFilter); err != nil {
         return fmt.Errorf("failed to send initial filter: %w", err)
     }
 
-    // Update filters based on some condition
+    // 根据条件动态更新过滤器
     for {
         newFilter := waitForFilterUpdate()
         if err := stream.Send(newFilter); err != nil {
@@ -97,32 +92,31 @@ func monitorLogs(client logger.Client, initialFilter *LogFilter) error {
 }
 ```
 
-## Server-Side Implementation
+## 服务端实现
 
-The server-side implementation handles both incoming filter updates and streams
-matching log entries back to the client.
+服务端实现需要同时处理入站的过滤器更新，并向客户端流式发送匹配的日志条目。
 
-### Server Stream Interface
+### 服务端流接口
 
 ```go
-// Interface that the server must satisfy
+// 服务端必须满足的接口
 type MonitorServerStream interface {
-    // Send streams instances of "LogEntry"
+    // Send 会将 "LogEntry" 的实例以流式发送
     Send(*LogEntry) error
-    // Recv returns the next filter in the stream
+    // Recv 返回流中的下一个过滤器
     Recv() (*LogFilter, error)
-    // Close closes the stream
+    // Close 关闭流
     Close() error
 }
 ```
 
-### Example Server Implementation
+### 服务端示例实现
 
-Here's how to implement bidirectional streaming on the server side:
+以下展示了如何在服务端侧实现双向流式传输：
 
 ```go
 func (s *loggerSvc) Monitor(ctx context.Context, stream logger.MonitorServerStream) error {
-    // Start a goroutine to handle filter updates
+    // 启动一个 goroutine 处理过滤器更新
     filterCh := make(chan *LogFilter, 1)
     go func() {
         defer close(filterCh)
@@ -139,18 +133,18 @@ func (s *loggerSvc) Monitor(ctx context.Context, stream logger.MonitorServerStre
         }
     }()
 
-    // Main loop for processing logs and applying filters
+    // 主循环：处理日志并应用过滤
     var currentFilter *LogFilter
     for {
         select {
         case filter, ok := <-filterCh:
             if !ok {
-                // Channel closed, stop processing
+                // 通道关闭，停止处理
                 return nil
             }
             currentFilter = filter
         case <-ctx.Done():
-            // Context cancelled, stop processing
+            // 上下文取消，停止处理
             return ctx.Err()
         default:
             if currentFilter != nil {
@@ -164,38 +158,30 @@ func (s *loggerSvc) Monitor(ctx context.Context, stream logger.MonitorServerStre
 }
 ```
 
-### Key Considerations
+### 关键注意事项
 
-1. **Concurrent Operations:**
-   - Use goroutines to handle sending and receiving independently
-   - Implement proper synchronization for shared state
-   - Handle graceful shutdown of both directions
+1. **并发操作：**
+   - 使用 goroutine 独立处理发送与接收
+   - 为共享状态实现恰当的同步
+   - 双向均要处理优雅关闭
 
-2. **Resource Management:**
-   - Monitor memory usage for both incoming and outgoing streams
-   - Implement rate limiting in both directions
-   - Clean up resources when either side closes the stream
+2. **资源管理：**
+   - 监控入站与出站流的内存使用
+   - 双向实现速率限制
+   - 在任一侧关闭流时清理资源
 
-3. **Error Handling:**
-   - Handle errors from both Send and Recv operations
-   - Propagate errors appropriately to both sides
-   - Consider implementing reconnection logic for transient failures
+3. **错误处理：**
+   - 同时处理来自 Send 与 Recv 的错误
+   - 将错误恰当地传播到双方
+   - 对瞬时故障考虑实现重连逻辑
 
-4. **Context Management:**
-   - Honor context cancellation for both directions
-   - Implement appropriate timeouts
-   - Clean up resources when context is cancelled
+4. **上下文管理：**
+   - 双向都要尊重上下文取消
+   - 实现适当的超时
+   - 上下文取消时清理资源
 
-## Summary
+## 总结
 
-Implementing bidirectional streaming in Goa requires careful coordination of
-both sending and receiving operations on both client and server sides. By
-following these patterns and best practices for concurrent operations, error
-handling, and resource management, you can build robust bidirectional streaming
-endpoints that enable real-time, interactive communication between client and
-server.
+在 Goa 中实现双向流式传输，需要在客户端与服务端两侧协调好发送与接收的操作。遵循并发操作、错误处理与资源管理的最佳实践，你可以构建健壮的双向流式端点，实现客户端与服务器之间实时、交互式的通信。
 
-The implementation allows for dynamic updates to streaming behavior through
-client-sent filters while maintaining a continuous stream of server responses,
-creating a flexible and powerful mechanism for real-time data exchange in your
-Goa services.
+该实现允许客户端通过发送过滤器动态更新流式行为，同时保持服务器端的持续响应，从而为 Goa 服务中的实时数据交换提供灵活而强大的机制。

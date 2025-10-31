@@ -1,106 +1,106 @@
 ---
-title: "Transport Mapping"
-linkTitle: "Transport Mapping"
+title: "传输映射"
+linkTitle: "传输映射"
 weight: 5
 description: >
-  Define how your service communicates over different transport protocols. Map your service methods to HTTP and gRPC endpoints.
+  定义服务如何在不同传输协议上通信。将服务方法映射到 HTTP 与 gRPC 端点。
 ---
 
-## Transport Mapping Overview
+## 传输映射概览
 
-Goa supports both HTTP and gRPC. The transport mapping DSL allows you to define how your service methods are exposed over these protocols.
+Goa 同时支持 HTTP 与 gRPC。传输映射 DSL 允许你定义服务方法如何在这些协议上暴露。
 
-## HTTP Transport
+## HTTP 传输
 
-The [HTTP DSL](https://pkg.go.dev/goa.design/goa/v3/dsl#HTTP) defines how your service methods map to HTTP endpoints. You can configure this at three levels:
-- API level: Define global HTTP settings
-- Service level: Configure service-wide HTTP properties
-- Method level: Specify method-specific HTTP behavior
+[HTTP DSL](https://pkg.go.dev/goa.design/goa/v3/dsl#HTTP) 用于定义服务方法如何映射到 HTTP 端点。你可以在三个层级进行配置：
+- API 层：定义全局 HTTP 设置
+- 服务层：配置服务范围的 HTTP 属性
+- 方法层：指定方法级的 HTTP 行为
 
-### Mapping Levels
+### 映射层级
 
-#### API Level
-Define global HTTP settings that apply to all services:
+#### API 层
+定义作用于所有服务的全局 HTTP 设置：
 ```go
 API("bookstore", func() {
     HTTP(func() {
-        Path("/api/v1") // Global prefix for all endpoints
+        Path("/api/v1") // 所有端点的全局前缀
     })
 })
 ```
 
-#### Service Level
-Configure HTTP properties for all methods in a service:
+#### 服务层
+为服务内所有方法配置 HTTP 属性：
 ```go
 Service("books", func() {
     HTTP(func() {
-        Path("/books")     // Service-wide path prefix
-        Parent("store")    // Parent service for path nesting
+        Path("/books")     // 服务范围路径前缀
+        Parent("store")    // 父服务，用于路径嵌套
     })
 })
 ```
 
-#### Method Level
-Define specific HTTP behavior for individual methods:
+#### 方法层
+为单个方法定义具体的 HTTP 行为：
 ```go
 Method("show", func() {
     HTTP(func() {
-        GET("/{id}")       // HTTP method and path
-        Response(StatusOK) // Success response code
+        GET("/{id}")       // HTTP 方法与路径
+        Response(StatusOK) // 成功响应码
     })
 })
 ```
 
-### HTTP Mapping Features
+### HTTP 映射特性
 
-The HTTP DSL provides several features for configuring endpoints:
+HTTP DSL 提供多种端点配置能力：
 
-1. **Path Parameters**
-   - Map payload fields to URL path segments
-   - Use pattern matching and validation
-   - Support optional parameters
+1. 路径参数
+   - 将载荷字段映射到 URL 路径片段
+   - 使用模式匹配与校验
+   - 支持可选参数
 
-2. **Query Parameters**
-   - Map payload fields to query string parameters
-   - Define parameter types and validation
-   - Handle optional parameters
+2. 查询参数
+   - 将载荷字段映射到查询字符串参数
+   - 定义参数类型与校验
+   - 处理可选参数
 
-3. **Headers**
-   - Map payload/result fields to HTTP headers
-   - Set required and optional headers
-   - Define header formats and validation
+3. 头
+   - 将载荷/结果字段映射到 HTTP 头
+   - 设置必填与可选头
+   - 定义头的格式与校验
 
-4. **Response Codes**
-   - Map results to success status codes
-   - Define error response codes
-   - Handle different response scenarios
+4. 响应码
+   - 将结果映射到成功状态码
+   - 定义错误响应码
+   - 处理不同响应场景
 
-## gRPC Transport
+## gRPC 传输
 
-The gRPC DSL defines how your service methods map to gRPC procedures. Like HTTP, it can be configured at multiple levels.
+gRPC DSL 用于定义服务方法如何映射到 gRPC 过程。与 HTTP 类似，它也可在多个层级进行配置。
 
-### gRPC Features
+### gRPC 特性
 
-1. **Message Mapping**
-   - Define request/response message structures
-   - Map fields to protobuf types
-   - Configure field numbers and options
+1. 消息映射
+   - 定义请求/响应消息结构
+   - 将字段映射到 protobuf 类型
+   - 配置字段编号与选项
 
-2. **Status Codes**
-   - Map service results to gRPC status codes
-   - Define error code mappings
-   - Handle standard gRPC status scenarios
+2. 状态码
+   - 将服务结果映射到 gRPC 状态码
+   - 定义错误码映射
+   - 处理标准 gRPC 状态场景
 
-3. **Metadata**
-   - Configure gRPC metadata handling
-   - Map headers to metadata
-   - Define metadata validation
+3. 元数据
+   - 配置 gRPC 元数据处理
+   - 将头映射到元数据
+   - 定义元数据校验
 
-### Common Patterns
+### 常见模式
 
-Here are some common transport mapping patterns:
+以下是一些常见的传输映射模式：
 
-#### RESTful Resource Mapping
+#### REST 风格资源映射
 ```go
 Service("users", func() {
     HTTP(func() {
@@ -121,58 +121,57 @@ Service("users", func() {
 })
 ```
 
-#### Mixed Protocol Support
-Services can support both HTTP and gRPC:
+#### 混合协议支持
+服务可以同时支持 HTTP 与 gRPC：
 ```go
 Method("create", func() {
-    // HTTP mapping
+    // HTTP 映射
     HTTP(func() {
         POST("/")
         Response(StatusCreated)
     })
     
-    // gRPC mapping
+    // gRPC 映射
     GRPC(func() {
         Response(CodeOK)
     })
 })
 ```
 
-## Best Practices
+## 最佳实践
 
-{{< alert title="Transport Mapping Guidelines" color="primary" >}}
-**HTTP Design**
-- Use consistent URL patterns
-- Follow RESTful conventions
-- Choose appropriate status codes
-- Handle errors consistently
+{{< alert title="传输映射指引" color="primary" >}}
+HTTP 设计
+- 使用一致的 URL 模式
+- 遵循 REST 约定
+- 选择合适的状态码
+- 一致地处理错误
 
-**gRPC Design**
-- Use meaningful service names
-- Define clear message structures
-- Follow protobuf best practices
-- Plan for backwards compatibility
+gRPC 设计
+- 使用有意义的服务名
+- 定义清晰的消息结构
+- 遵循 protobuf 最佳实践
+- 规划向后兼容
 
-**General Tips**
-- Document transport-specific behavior
-- Consider security implications
-- Plan for versioning
-- Test both transport layers
+通用建议
+- 记录传输层特定行为
+- 考量安全影响
+- 规划版本化
+- 同时测试两种传输层
 {{< /alert >}}
 
-## Transport-Specific Error Handling
+## 传输层特定的错误处理
 
-Each transport protocol has its own way of representing errors:
+不同传输协议有各自的错误表示方式：
 
-### HTTP Errors
-- Map to appropriate status codes
-- Include error details in response body
-- Use standard headers for additional info
-- Follow HTTP error conventions
+### HTTP 错误
+- 映射到合适的状态码
+- 在响应体中包含错误详情
+- 使用标准头传递额外信息
+- 遵循 HTTP 错误约定
 
-### gRPC Errors
-- Use standard gRPC status codes
-- Include detailed error messages
-- Leverage error details feature
-- Follow gRPC error model
-
+### gRPC 错误
+- 使用标准 gRPC 状态码
+- 包含详细错误消息
+- 利用 error details 特性
+- 遵循 gRPC 错误模型

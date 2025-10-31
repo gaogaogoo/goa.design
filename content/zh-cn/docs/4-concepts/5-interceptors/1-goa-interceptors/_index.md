@@ -1,79 +1,74 @@
 ---
-linkTitle: Goa Interceptors
-title: Goa Interceptors
-description: "Learn about Goa's type-safe interceptor system for cross-cutting concerns"
+linkTitle: Goa 拦截器
+title: Goa 拦截器
+description: "了解 Goa 面向横切关注点的类型安全拦截器系统"
 weight: 1
 ---
 
-Goa interceptors provide a powerful, type-safe mechanism for injecting
-cross-cutting concerns into your service methods. They allow you to intercept
-and modify both requests and responses at both the client and server side, with
-full type safety and excellent IDE support.
+Goa 拦截器提供了一种强大且类型安全的机制，用于在服务方法中注入横切关注点。它们允许你在客户端与服务端两侧拦截并修改请求与响应，同时保持完整的类型安全与良好的 IDE 支持。
 
-## What are Interceptors?
+## 什么是拦截器？
 
-Interceptors are components that allow you to add behavior that executes before,
-after, or around your service methods. They can:
+拦截器是一种组件，允许你在服务方法之前、之后或包裹其周围执行附加行为。它们可以：
 
-- Read and modify incoming requests
-- Read and modify outgoing responses
-- Handle errors
-- Add context information
-- Implement cross-cutting concerns like logging, monitoring, or data transformation
+- 读取并修改入站请求
+- 读取并修改出站响应
+- 处理错误
+- 添加上下文信息
+- 实现日志、监控或数据转换等横切关注点
 
-## Key Features
+## 关键特性
 
-- **Type Safety**: All interceptor interactions are fully typed with generated helper types
-- **Flexible Placement**: Can be applied at both service and method levels
-- **Bi-directional**: Support for both client-side and server-side interception
-- **Streaming Support**: Full support for unary and streaming operations
-- **Clean DSL**: Clear, declarative syntax for defining interceptors
-- **Explicit Access Control**: Clear specification of which payload and result fields can be accessed
+- **类型安全**：所有拦截器交互均由生成的辅助类型进行完整类型约束
+- **灵活应用位置**：可在服务级与方法级应用
+- **双向支持**：同时支持客户端与服务端拦截
+- **流式支持**：完整支持一元与流式操作
+- **简洁 DSL**：用于定义拦截器的清晰声明式语法
+- **显式访问控制**：明确指定可访问的 Payload 与 Result 字段
 
-## Basic Example
+## 基本示例
 
-Here's a simple example of defining a client-side retry interceptor:
+以下示例定义一个客户端重试拦截器：
 
 ```go
 var RetryPolicy = Interceptor("RetryPolicy", func() {
-    Description("Implements exponential backoff retry for failed operations")
+    Description("为失败的操作实现指数退避重试")
     
-    // Track retry attempts in result
+    // 在结果中记录重试次数
     WriteResult(func() {
         Attribute("attempts")
     })
 })
 
 var _ = Service("payment", func() {
-    // Apply retry policy to all service methods
+    // 在整个服务上应用重试策略
     ClientInterceptor(RetryPolicy)
     
     Method("process", func() {
         Payload(func() {
-            Attribute("amount", Int, "Payment amount")
-            Attribute("currency", String, "Payment currency")
+            Attribute("amount", Int, "支付金额")
+            Attribute("currency", String, "支付币种")
         })
         Result(func() {
-            Attribute("id", String, "Transaction ID")
-            Attribute("status", String, "Transaction status")
-            Attribute("attempts", Int, "Number of retry attempts made")
+            Attribute("id", String, "交易 ID")
+            Attribute("status", String, "交易状态")
+            Attribute("attempts", Int, "已进行的重试次数")
         })
-        // Method-specific configuration...
+        // 方法级的其他配置...
     })
 })
 ```
-In this example, we define a `RetryPolicy` interceptor that implements
-exponential backoff for failed operations. Let's break down the key components:
+在该示例中，我们定义了实现指数退避的 `RetryPolicy` 拦截器。要点如下：
 
-1. **Interceptor Definition**:
+1. **拦截器定义**：
 
    ```go
    var RetryPolicy = Interceptor("RetryPolicy", func() {
    ```
 
-   This creates a new interceptor named "RetryPolicy".
+   创建名为 "RetryPolicy" 的拦截器。
 
-2. **Result Modification**:
+2. **结果修改**：
 
    ```go
    WriteResult(func() {
@@ -81,49 +76,44 @@ exponential backoff for failed operations. Let's break down the key components:
    })
    ```
 
-   The interceptor declares that it will write to an "attempts" field in the
-   response, tracking how many retries were needed.
+   声明该拦截器会向响应中的 "attempts" 字段写入重试次数。
 
-3. **Service Application**:
+3. **服务应用**：
 
    ```go
    ClientInterceptor(RetryPolicy)
    ```
 
-   The interceptor is applied at the service level, meaning it will affect all methods in the service.
+   在服务级应用该拦截器，意味着它影响服务中的所有方法。
 
-4. **Method Definition**:
+4. **方法定义**：
 
-   The `process` method shows how the interceptor integrates with the service:
-   - The payload defines the payment details (amount and currency)
-   - The result includes the standard transaction fields (id, status)
-   - The `attempts` field in the result allows the retry interceptor to report its activity
+   `process` 方法展示了拦截器与服务的集成方式：
+   - Payload 定义支付细节（amount 与 currency）
+   - Result 包含标准交易字段（id、status）
+   - Result 中的 `attempts` 字段用于重试拦截器记录其行为
 
-When implemented, this interceptor will automatically retry failed operations
-with increasing delays between attempts, providing resilience against transient
-failures.
+拦截器实现后，会对失败的操作自动进行退避重试，提升对瞬时错误的抵抗能力。
 
-## When to Use Interceptors
+## 何时使用拦截器
 
-Interceptors are ideal for several common use cases in service architectures:
+拦截器适用于服务架构中的诸多常见场景：
 
-- **Client Resilience**: Implement retry policies and circuit breakers
-- **Resource Management**: Rate limiting and request throttling
-- **Monitoring**: Track operation metrics and performance
-- **Data Transformation**: Modify or enrich data as it flows through your system
-- **Correlation**: Add request correlation and tracing IDs
-- **Caching**: Implement client-side or server-side caching
-- **Validation**: Add custom validation rules beyond Goa's built-in validation
-- **Error Handling**: Standardize error responses and recovery strategies
+- **客户端韧性**：实现重试策略与熔断器
+- **资源管理**：限流与节流
+- **监控**：跟踪操作指标与性能
+- **数据转换**：在数据流动过程中修改或丰富数据
+- **关联追踪**：添加请求关联与跟踪 ID
+- **缓存**：实现客户端或服务端缓存
+- **校验**：补充 Goa 内置校验之外的自定义校验规则
+- **错误处理**：标准化错误响应与恢复策略
 
-Note that for security concerns like authentication and authorization, you
-should use Goa's built-in security DSL instead of interceptors, as it provides
-more robust and specialized security features.
+注意：涉及安全（认证与授权）时，应使用 Goa 的内置安全 DSL，而非拦截器，因为其提供更稳健且专用的安全特性。
 
-## Next Steps
+## 下一步
 
-- Learn how to [Get Started](1-getting-started) with interceptors
-- Explore different [Types of Interceptors](2-interceptor-types) for specific scenarios
-- Learn about [Interceptor Implementation](3-interceptor-implementation) details and patterns
-- Review [Best Practices](4-best-practices) for using interceptors effectively
+- 了解如何[入门](1-getting-started)使用拦截器
+- 探索不同[拦截器类型](2-interceptor-types)以适配具体场景
+- 学习[拦截器实现](3-interceptor-implementation)的细节与模式
+- 查看[最佳实践](4-best-practices)，高效使用拦截器
 

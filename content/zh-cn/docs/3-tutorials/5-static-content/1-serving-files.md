@@ -1,130 +1,117 @@
 ---
-title: Serving Files
-linkTitle: Serving Files
+title: 文件服务
+linkTitle: 文件服务
 weight: 1
-description: "Master Goa's file serving capabilities to efficiently deliver static assets like HTML, CSS, JavaScript, and images through HTTP endpoints with proper path resolution."
+description: "掌握 Goa 的文件服务能力，通过 HTTP 端点高效提供 HTML、CSS、JavaScript、图片等静态资源，并正确进行路径解析。"
 ---
 
-Goa provides a straightforward way to serve static assets such as HTML, CSS,
-JavaScript, and images through the `Files` function in the service DSL. This
-function allows you to map HTTP paths to directories or specific files on disk,
-enabling your service to deliver static content efficiently.
+Goa 通过服务 DSL 中的 `Files` 函数，为提供 HTML、CSS、JavaScript、图片等静态资源提供了简洁直接的方式。该函数允许将 HTTP 路径映射到磁盘上的目录或具体文件，从而让你的服务高效地交付静态内容。
 
-## Using the `Files` Function
+## 使用 `Files` 函数
 
-The `Files` function defines an endpoint that serves static assets via HTTP. It
-behaves similarly to the standard `http.ServeFile` function, handling requests
-to serve files or directories based on the defined path.
+`Files` 用于定义一个通过 HTTP 提供静态资源的端点，行为与标准库 `http.ServeFile` 类似，会根据定义的路径处理对文件或目录的请求。
 
-### Syntax
+### 语法
 
 ```go
 Files(path, filename string, dsl ...func())
 ```
 
-- **path:** The HTTP request path. It can include a wildcard (e.g., `{*filepath}`) to match variable segments of the URL.
-- **filename:** The file system path to the directory or file to serve.
-- **dsl:** Optional DSL function to provide additional metadata such as descriptions and documentation.
+- **path：** HTTP 请求路径。可以包含通配符（例如 `{*filepath}`）以匹配 URL 中的可变片段。
+- **filename：** 要提供的目录或文件在文件系统中的路径。
+- **dsl：** 可选 DSL，用于补充描述、文档等元数据。
 
-### Examples
+### 示例
 
-#### Serving a Single File
+#### 提供单个文件
 
-To serve a single file, define the `Files` function with a specific path and the file's location on disk.
+要提供单个文件，为 `Files` 指定唯一的请求路径与磁盘上的文件位置。
 
 ```go
 var _ = Service("web", func() {
     Files("/index.html", "/www/data/index.html", func() {
-        // All optional, but useful for OpenAPI spec
-        Description("Serve home page.")
+        // 这些都是可选，但对 OpenAPI 说明很有帮助
+        Description("提供首页。")
         Docs(func() {
-            Description("Additional documentation")
+            Description("额外文档")
             URL("https://goa.design")
         })
     })
 })
 ```
 
-In this example:
+上述示例中：
 
-- **Path:** `/index.html` - Requests to `/index.html` will serve the file located at `/www/data/index.html`.
-- **Filename:** `/www/data/index.html` - Absolute path to the file on disk.
-- **DSL Functions:** Provide a description and additional documentation for the endpoint.
+- **Path：** `/index.html` —— 对该路径的请求会返回位于 `/www/data/index.html` 的文件。
+- **Filename：** `/www/data/index.html` —— 文件在磁盘上的绝对路径。
+- **DSL 函数：** 为端点提供说明与额外文档。
 
-#### Serving Static Assets with Wildcard
+#### 使用通配符提供静态资源
 
-To serve multiple files from a directory, use a wildcard in the path.
+要从某个目录提供多文件，可在路径中使用通配符。
 
 ```go
 var _ = Service("web", func() {
     Files("/static/{*path}", "/www/data/static", func() {
-        Description("Serve static assets like CSS, JS, and images.")
+        Description("提供 CSS、JS、图片等静态资源。")
     })
 })
 ```
 
-In this example:
+此示例中：
 
-- **Path:** `/static/{*path}` - The `{*path}` wildcard matches any subpath after `/static/`, allowing dynamic file serving.
-- **Filename:** `/www/data/static` - Directory containing static assets.
-- **Description:** Provides a description for the endpoint.
+- **Path：** `/static/{*path}` —— `{*path}` 通配符匹配 `/static/` 之后的任意子路径，实现动态文件服务。
+- **Filename：** `/www/data/static` —— 存放静态资源的目录。
+- **Description：** 为端点提供描述。
 
-#### Path Resolution
+#### 路径解析
 
-When using a wildcard path like `/static/{*path}`, Goa combines the wildcard value with the base directory to locate the file:
+使用像 `/static/{*path}` 这样的通配符路径时，Goa 会将通配符值与基础目录拼接以定位文件：
 
-1. The wildcard portion of the URL path is extracted
-2. This is appended to the base directory specified in `Filename`
-3. The resulting path is used to look up the file
+1. 提取 URL 路径中通配符部分；
+2. 将其追加到 `Filename` 指定的基础目录；
+3. 使用得到的路径查找文件。
 
-For example, with the configuration:
+例如如下配置：
 
 ```go
 Files("/static/{*path}", "/www/data/static")
 ```
 
-If the URL path is `/static/css/style.css`, Goa will resolve to `/www/data/static/css/style.css`.
+当 URL 路径为 `/static/css/style.css` 时，Goa 会解析到 `/www/data/static/css/style.css`。
 
-## Handling Index Files
+## 处理索引文件
 
-When serving directories, ensure that index files (e.g., `index.html`) are
-correctly mapped. If you do not explicitly map `index.html` under a wildcard
-path, the underlying `http.ServeFile` call will return a redirect to `./`
-instead of the `index.html` file.
+当提供目录时，请确保正确映射索引文件（如 `index.html`）。如果没有在通配符路径下显式映射 `index.html`，底层的 `http.ServeFile` 会重定向到 `./`，而不是直接返回 `index.html`。
 
-### Example
+### 示例
 
 ```go
 var _ = Service("bottle", func() {
     Files("/static/{*path}", "/www/data/static", func() {
-        Description("Serve static assets for the SPA.")
+        Description("为 SPA 提供静态资源。")
     })
     Files("/index.html", "/www/data/index.html", func() {
-        Description("Serve the SPA's index.html for client-side routing.")
+        Description("为客户端路由提供 SPA 的 index.html。")
     })
 })
 ```
 
-This configuration ensures that requests to `/index.html` serve the `index.html`
-file, while requests to `/static/*` serve files from the static directory.
+该配置确保对 `/index.html` 的请求返回 `index.html` 文件，而对 `/static/*` 的请求返回静态目录中的文件。
 
-## Integration with Service Implementation
+## 与服务实现的集成
 
-When implementing static file serving in your Goa service, you have several
-options for managing and serving the files:
+在 Goa 服务中实现静态文件提供时，你有多种管理与提供文件的方式：
 
-* Using the File System: In your service implementation, use the file system to
-  serve embedded files.
+* 使用文件系统：在服务实现中直接使用文件系统提供文件或嵌入的文件。
 
-* Using Embedded Files: The `embed` package in Go 1.16+ allows you to embed
-  static files directly into your binary, making deployment simpler and more
-  reliable.
+* 使用嵌入文件：Go 1.16+ 的 `embed` 包允许将静态文件直接嵌入二进制，部署更简单、更可靠。
 
-### Example Service Implementation
+### 服务实现示例
 
-This example demonstrates how to serve static files using the `embed` package.
+以下示例演示如何使用 `embed` 包提供静态文件。
 
-Assuming the following design:
+假设设计如下：
 
 ```go
 var _ = Service("web", func() {
@@ -132,38 +119,35 @@ var _ = Service("web", func() {
 })
 ```
 
-The service implementation can be:
+服务实现可以是：
 
 ```go
 package web
 
 import (
     "embed"
-    // ... other imports ...
+    // ... 其他 import ...
 )
 
 //go:embed static
 var StaticFS embed.FS
 
-// ... other service code ...
+// ... 其他服务代码 ...
 ```
 
-### Main Function Setup
+### main 函数设置
 
-In the main function, configure the HTTP server to serve static files by:
+在 `main` 中配置 HTTP 服务器以提供静态文件：
 
-1. Creating a `http.FS` instance from the embedded `StaticFS` using `http.FS(web.StaticFS)`
-2. Passing this file system instance as the last argument to the generated `New`
-   function
-3. This allows the HTTP server to efficiently serve the embedded static files
-   through the endpoints defined with `Files` in the design
+1. 使用 `http.FS(web.StaticFS)` 从嵌入的 `StaticFS` 创建 `http.FS` 实例；
+2. 将该文件系统实例作为生成的 `New` 函数的最后一个参数传入；
+3. 这样即可通过设计中用 `Files` 定义的端点高效提供嵌入的静态文件。
 
-The file system instance provides access to the embedded files while maintaining
-proper file system semantics and security.
+该文件系统实例在提供嵌入文件的同时，保持了正确的文件系统语义与安全性。
 
 ```go
 func main() {
-    // Other setup code...
+    // 其他初始化代码...
     mux := goahttp.NewMuxer()
     server := genhttp.New(
         endpoints,
@@ -172,21 +156,18 @@ func main() {
         goahttp.ResponseEncoder,
         nil,
         nil,
-        http.FS(web.StaticFS), // Pass the embedded file system
+        http.FS(web.StaticFS), // 传入嵌入的文件系统
     )
     genhttp.Mount(mux, server)
-    // Start the server...
+    // 启动服务器...
 }
 ```
 
-In this setup:
+在该设置中：
 
-- **go:embed:** Embeds the `static` directory into the binary.
-- **http.FS:** Provides the embedded file system to the server for serving static files.
+- **go:embed：** 将 `static` 目录嵌入到二进制。
+- **http.FS：** 将嵌入的文件系统提供给服务器用于静态文件服务。
 
-## Summary
+## 小结
 
-Using the `Files` function in Goa allows you to efficiently serve static content
-in your services. By defining specific paths and file locations, you can manage
-the delivery of static assets seamlessly. Ensure proper mapping of index files
-and utilize embedded file systems for streamlined deployments.
+使用 Goa 的 `Files` 能够在服务中高效提供静态内容。通过定义明确的路径与文件位置，你可以无缝管理静态资源的交付。请确保正确映射索引文件，并充分利用嵌入式文件系统以简化部署流程。

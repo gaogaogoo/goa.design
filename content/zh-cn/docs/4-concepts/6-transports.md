@@ -1,172 +1,124 @@
 ---
-title: "Transports and Streaming Combinations"
-linkTitle: "Transports"
+title: "传输与流式组合"
+linkTitle: "传输"
 weight: 6
-description: "Allowed transport combinations per service and per method, with streaming modes and constraints."
+description: "每个服务和每个方法允许的传输组合，以及流模式和约束。"
 ---
 
-This page explains which transport combinations a Goa service and its methods
-can expose, and which streaming modes are valid per transport. The goal is to
-give newcomers and experienced users a single, authoritative reference for what
-“mixing transports” means in Goa, and what combinations are allowed or
-forbidden.
+本页面解释了 Goa 服务及其方法可以公开哪些传输组合，以及每种传输的有效流模式。目标是为新手和有经验的用户提供一个单一、权威的参考，说明在 Goa 中“混合传输”意味着什么，以及哪些组合是允许或禁止的。
 
-It covers:
-- The available transports: HTTP (plain), HTTP Server‑Sent Events (SSE), HTTP
-  WebSocket, JSON‑RPC 2.0 (over HTTP, SSE, WebSocket), and gRPC.
-- Streaming modes: no stream, client stream, server stream, bidirectional.
-- What a single service may expose at the same time.
-- What a single method may expose on a per‑transport basis.
+内容包括：
+- 可用传输：HTTP（普通）、HTTP 服务器发送事件（SSE）、HTTP WebSocket、JSON-RPC 2.0（通过 HTTP、SSE、WebSocket）和 gRPC。
+- 流模式：无流、客户端流、服务器流、双向。
+- 单个服务可以同时公开什么。
+- 单个方法可以在每个传输的基础上公开什么。
 
 
-## Terminology
+## 术语
 
-- No stream: Standard request/response (unary).
-- Client stream: Client sends a stream of payloads to the server.
-- Server stream: Server sends a stream of results to the client.
-- Bidirectional: Both sides stream.
-- Mixed results: A method defines both `Result` and `StreamingResult` with
-  different types. This enables content negotiation between a regular response
-  and a streaming response (only supported by SSE).
+- 无流：标准请求/响应（一元）。
+- 客户端流：客户端向服务器发送有效负载流。
+- 服务器流：服务器向客户端发送结果流。
+- 双向：双方都进行流式传输。
+- 混合结果：一个方法同时定义了具有不同类型的 `Result` 和 `StreamingResult`。这使得在常规响应和流式响应之间可以进行内容协商（仅受 SSE 支持）。
 
 
-## Service‑level: What transports can be mixed in one service?
+## 服务级别：一个服务中可以混合哪些传输？
 
-In the table below, “yes” means the transports can coexist in the same Goa
-service. Notes explain constraints.
+在下表中，“是”表示传输可以在同一个 Goa 服务中共存。注释解释了约束。
 
-| Transport in same service | With HTTP (plain) | With HTTP (WS) | With HTTP (SSE) | With JSON‑RPC (HTTP) | With JSON‑RPC (WS) | With JSON‑RPC (SSE) | With gRPC |
+| 同一服务中的传输 | 使用 HTTP（普通） | 使用 HTTP (WS) | 使用 HTTP (SSE) | 使用 JSON-RPC (HTTP) | 使用 JSON-RPC (WS) | 使用 JSON-RPC (SSE) | 使用 gRPC |
 |---------------------------|-------------------|----------------|-----------------|----------------------|--------------------|---------------------|-----------|
-| HTTP (plain)              | —                 | yes            | yes             | yes                  | no [S2]            | yes                 | yes       |
-| HTTP (WebSocket)          | yes               | —              | yes             | yes                  | no [S2]            | yes                 | yes       |
-| HTTP (SSE)                | yes               | yes            | —               | yes                  | no [S2]            | yes                 | yes       |
-| JSON‑RPC (HTTP)           | yes               | yes            | yes             | —                    | no [S1]            | yes                 | yes       |
-| JSON‑RPC (WebSocket)      | no [S2]           | no [S2]        | no [S2]         | no [S1]              | —                  | no [S1]             | yes       |
-| JSON‑RPC (SSE)            | yes               | yes            | yes             | yes                  | no [S1]            | —                   | yes       |
-| gRPC                      | yes               | yes            | yes             | yes                  | yes                | yes                 | —         |
+| HTTP（普通）              | —                 | 是             | 是              | 是                   | 否 [S2]            | 是                  | 是        |
+| HTTP (WebSocket)          | 是                | —              | 是              | 是                   | 否 [S2]            | 是                  | 是        |
+| HTTP (SSE)                | 是                | 是             | —               | 是                   | 否 [S2]            | 是                  | 是        |
+| JSON-RPC (HTTP)           | 是                | 是             | 是              | —                    | 否 [S1]            | 是                  | 是        |
+| JSON-RPC (WebSocket)      | 否 [S2]           | 否 [S2]        | 否 [S2]         | 否 [S1]              | —                  | 否 [S1]             | 是        |
+| JSON-RPC (SSE)            | 是                | 是             | 是              | 是                   | 否 [S1]            | —                   | 是        |
+| gRPC                      | 是                | 是             | 是              | 是                   | 是                 | 是                  | —         |
 
-Notes:
-- [S1] JSON‑RPC WebSocket cannot be mixed with other JSON‑RPC transports in the
-  same service. A JSON‑RPC service must be either WebSocket‑only, or HTTP/SSE
-  (which can coexist) — not both.
-- [S2] A service cannot mix JSON‑RPC WebSocket endpoints with “pure HTTP”
-  WebSocket endpoints. JSON‑RPC uses a single WS connection shared by all
-  methods, whereas pure HTTP creates one WS connection per endpoint.
+注意：
+- [S1] JSON-RPC WebSocket 不能与同一服务中的其他 JSON-RPC 传输混合。JSON-RPC 服务必须是纯 WebSocket，或者是 HTTP/SSE（可以共存）——不能两者兼有。
+- [S2] 服务不能将 JSON-RPC WebSocket 端点与“纯 HTTP” WebSocket 端点混合。JSON-RPC 使用所有方法共享的单个 WS 连接，而纯 HTTP 为每个端点创建一个 WS 连接。
 
-Additional service‑level behaviors:
-- JSON‑RPC HTTP and JSON‑RPC SSE may share the same POST endpoint and are
-  selected via the `Accept` header (e.g., `text/event-stream` vs.
-  `application/json`).
-- gRPC is independent and can be combined freely with HTTP and JSON‑RPC
-  transports.
+附加的服务级别行为：
+- JSON-RPC HTTP 和 JSON-RPC SSE 可以共享同一个 POST 端点，并通过 `Accept` 标头进行选择（例如，`text/event-stream` vs. `application/json`）。
+- gRPC 是独立的，可以与 HTTP 和 JSON-RPC 传输自由组合。
 
 
-## Method‑level: Valid streaming modes per transport
+## 方法级别：每种传输的有效流模式
 
-In the table below, “yes” means the streaming mode is valid for a method over
-that transport. “yes (mixed)” means it is valid when the method uses mixed
-results (different `Result` and `StreamingResult`) and the endpoint enables
-SSE. “no” means it is forbidden.
+在下表中，“是”表示该流模式对于该传输上的方法是有效的。“是（混合）”表示当方法使用混合结果（不同的 `Result` 和 `StreamingResult`）并且端点启用 SSE 时，它是有效的。“否”表示禁止。
 
-| Transport           | No stream           | Client stream | Server stream       | Bidirectional |
+| 传输           | 无流           | 客户端流 | 服务器流       | 双向 |
 |---------------------|---------------------|---------------|---------------------|---------------|
-| HTTP (plain)        | yes                 | no            | yes (mixed) [M1]    | no            |
-| HTTP (SSE)          | yes (mixed) [M2]    | no            | yes [M3]            | no            |
-| HTTP (WebSocket)    | no                  | yes [M4]      | yes [M4]            | yes [M4]      |
-| JSON‑RPC (HTTP)     | yes                 | no            | yes (mixed) [M1,M5] | no            |
-| JSON‑RPC (SSE)      | yes (mixed) [M2,M5] | no            | yes [M6]            | no            |
-| JSON‑RPC (WebSocket)| no                  | yes [M7]      | yes [M8]            | yes [M7]      |
-| gRPC                | yes                 | yes           | yes                 | yes           |
+| HTTP（普通）        | 是                 | 否            | 是（混合）[M1]    | 否            |
+| HTTP (SSE)          | 是（混合）[M2]    | 否            | 是 [M3]            | 否            |
+| HTTP (WebSocket)    | 否                  | 是 [M4]      | 是 [M4]      | 是 [M4]      |
+| JSON-RPC (HTTP)     | 是                 | 否            | 是（混合）[M1,M5] | 否            |
+| JSON-RPC (SSE)      | 是（混合）[M2,M5] | 否            | 是 [M6]            | 否            |
+| JSON-RPC (WebSocket)| 否                  | 是 [M7]      | 是 [M8]      | 是 [M7]      |
+| gRPC                | 是                 | 是           | 是                 | 是           |
 
-Notes:
-- [M1] Mixed results requires SSE on the endpoint and forbids
-  `StreamingPayload`. Use for content negotiation between a regular response
-  and an SSE stream.
-- [M2] Using SSE with a non‑streaming method is only valid when the method has
-  mixed results (the SSE path serves the streaming result; the non‑SSE path
-  serves the regular result).
-- [M3] SSE is strictly server‑to‑client; it cannot be used with client or
-  bidirectional streaming.
-- [M4] Pure HTTP WebSocket endpoints must use GET and cannot include a request
-  body. Map request data via headers/params instead. (JSON‑RPC WS is an
-  exception because messages travel inside the WS channel.)
-- [M5] JSON‑RPC HTTP and JSON‑RPC SSE can coexist with mixed results; the server
-  chooses based on the `Accept` header.
-- [M6] JSON‑RPC SSE uses POST on the shared JSON‑RPC endpoint; the SSE `id`
-  field maps to the result ID attribute.
-- [M7] JSON‑RPC WebSocket supports client‑stream, server‑stream, and
-  bidirectional streaming. Non‑streaming methods are not supported over
-  JSON‑RPC WebSocket.
-- [M8] For JSON‑RPC WebSocket with server streaming, define request data in the
-  method `Payload`; do not also define a `StreamingPayload`.
+注意：
+- [M1] 混合结果要求端点上有 SSE 并禁止 `StreamingPayload`。用于在常规响应和 SSE 流之间进行内容协商。
+- [M2] 仅当方法具有混合结果时，将 SSE 与非流式方法一起使用才有效（SSE 路径提供流式结果；非 SSE 路径提供常规结果）。
+- [M3] SSE 严格是服务器到客户端的；它不能用于客户端或双向流。
+- [M4] 纯 HTTP WebSocket 端点必须使用 GET 并且不能包含请求正文。请改用标头/参数映射请求数据。（JSON-RPC WS 是一个例外，因为消息在 WS 通道内传输。）
+- [M5] JSON-RPC HTTP 和 JSON-RPC SSE 可以与混合结果共存；服务器根据 `Accept` 标头进行选择。
+- [M6] JSON-RPC SSE 在共享的 JSON-RPC 端点上使用 POST；SSE `id` 字段映射到结果 ID 属性。
+- [M7] JSON-RPC WebSocket 支持客户端流、服务器流和双向流。JSON-RPC WebSocket 不支持非流式方法。
+- [M8] 对于具有服务器流的 JSON-RPC WebSocket，在方法 `Payload` 中定义请求数据；不要同时定义 `StreamingPayload`。
 
 
-## JSON‑RPC specifics
+## JSON-RPC 细节
 
 - WebSocket:
-  - One WS connection per service shared by all JSON‑RPC methods.
-  - No header/cookie/param mappings on WS endpoints.
-  - Three method patterns are supported:
-    - `StreamingPayload()` only (client‑to‑server notifications).
-    - `StreamingResult()` only (server‑to‑client notifications; emitted without
-      a request `id`).
-    - Both `StreamingPayload()` and `StreamingResult()` (bidirectional).
-  - Non‑streaming methods are not supported over JSON‑RPC WebSocket.
+  - 每个服务一个 WS 连接，由所有 JSON-RPC 方法共享。
+  - WS 端点上没有标头/cookie/参数映射。
+  - 支持三种方法模式：
+    - 仅 `StreamingPayload()`（客户端到服务器通知）。
+    - 仅 `StreamingResult()`（服务器到客户端通知；发出时没有请求 `id`）。
+    - `StreamingPayload()` 和 `StreamingResult()`（双向）。
+  - JSON-RPC WebSocket 不支持非流式方法。
 
 - HTTP and SSE:
-  - Both use the same JSON‑RPC route (POST). The server selects the response
-    behavior at runtime based on `Accept`.
-  - Mixed results enable content negotiation between regular HTTP JSON‑RPC
-    responses and SSE event streams.
+  - 两者都使用相同的 JSON-RPC 路由（POST）。服务器在运行时根据 `Accept` 选择响应行为。
+  - 混合结果支持在常规 HTTP JSON-RPC 响应和 SSE 事件流之间进行内容协商。
 
-- ID handling:
-  - Non‑streaming: the framework copies the request `id` to the result `ID`
-    field if not set by user code.
-  - Streaming (WS): server replies reuse the original request `id`;
-    server‑initiated notifications have no `id`.
-  - SSE: `SendAndClose` sends a JSON‑RPC response; the `id` equals the result
-    ID if set, otherwise the request `id`.
+- ID 处理:
+  - 非流式：如果用户代码未设置，框架会将请求 `id` 复制到结果 `ID` 字段。
+  - 流式 (WS)：服务器回复重用原始请求 `id`；服务器发起的通知没有 `id`。
+  - SSE：`SendAndClose` 发送一个 JSON-RPC 响应；如果设置了 `id`，则 `id` 等于结果 ID，否则等于请求 `id`。
 
 
-## HTTP specifics
+## HTTP 细节
 
-- WebSocket endpoints must use GET. SSE endpoints may use GET or POST. JSON‑RPC
-  SSE uses POST.
-- WebSocket endpoints (pure HTTP) cannot have a request body. Map input
-  through headers and/or params. (JSON‑RPC WS is exempt because the JSON‑RPC
-  messages flow over the WS channel.)
+- WebSocket 端点必须使用 GET。SSE 端点可以使用 GET 或 POST。JSON-RPC SSE 使用 POST。
+- WebSocket 端点（纯 HTTP）不能有请求正文。通过标头和/或参数映射输入。（JSON-RPC WS 是豁免的，因为 JSON-RPC 消息在 WS 通道上传输。）
 
 
-## gRPC specifics
+## gRPC 细节
 
-gRPC places no additional restrictions relative to HTTP/JSON‑RPC in Goa. Unary,
-client streaming, server streaming, and bidirectional streaming are all
-supported. gRPC can be combined freely with any of the HTTP and JSON‑RPC
-transports listed above.
+相对于 Goa 中的 HTTP/JSON-RPC，gRPC 没有施加额外的限制。一元、客户端流、服务器流和双向流都受支持。gRPC 可以与上面列出的任何 HTTP 和 JSON-RPC 传输自由组合。
 
 
-## Where these rules are enforced (for reference)
+## 这些规则在哪里强制执行（供参考）
 
-The following components enforce the constraints summarized in this document:
-- `expr/method.go`: stream‑kind helpers; mixed results detection.
-- `dsl/payload.go`, `dsl/result.go`: how `StreamingPayload`/`StreamingResult`
-  set the method stream kind.
-- `expr/http_endpoint.go`: SSE constraints; mixed results requirements; pure
-  HTTP WS method/route validations; JSON‑RPC endpoint validations.
-- `expr/http_service.go`: JSON‑RPC transport mixing rules; JSON‑RPC WS vs. pure
-  HTTP WS conflict; JSON‑RPC route preparation and method enforcement (GET for
-  WS, POST otherwise).
-- `dsl/jsonrpc.go` and `jsonrpc/README.md`: JSON‑RPC transport behavior
-  (batching, notifications, WS/SSE semantics), including “WS requires
-  streaming” and “HTTP+SSE content negotiation.”
+以下组件强制执行本文档中总结的约束：
+- `expr/method.go`: 流类型助手；混合结果检测。
+- `dsl/payload.go`, `dsl/result.go`: `StreamingPayload`/`StreamingResult` 如何设置方法流类型。
+- `expr/http_endpoint.go`: SSE 约束；混合结果要求；纯 HTTP WS 方法/路由验证；JSON-RPC 端点验证。
+- `expr/http_service.go`: JSON-RPC 传输混合规则；JSON-RPC WS 与纯 HTTP WS 冲突；JSON-RPC 路由准备和方法强制执行（WS 为 GET，否则为 POST）。
+- `dsl/jsonrpc.go` and `jsonrpc/README.md`: JSON-RPC 传输行为（批处理、通知、WS/SSE 语义），包括“WS 需要流式传输”和“HTTP+SSE 内容协商”。
 
 
-## Quick examples
+## 快速示例
 
-Minimal examples to connect the concepts to the DSL (omitting unrelated lines):
+将概念与 DSL 连接起来的最小示例（省略无关行）：
 
 ```go
-// JSON‑RPC SSE + HTTP (mixed results)
+// JSON-RPC SSE + HTTP (混合结果)
 Method("monitor", func() {
     Result(ResultType)
     StreamingResult(EventType)
@@ -175,7 +127,7 @@ Method("monitor", func() {
 ```
 
 ```go
-// JSON‑RPC WebSocket (bidirectional)
+// JSON-RPC WebSocket (双向)
 Method("chat", func() {
     StreamingPayload(Message)
     StreamingResult(Message)
@@ -184,14 +136,13 @@ Method("chat", func() {
 ```
 
 ```go
-// Pure HTTP SSE (server stream)
+// 纯 HTTP SSE (服务器流)
 Method("watch", func() {
     StreamingResult(Event)
     HTTP(func() { ServerSentEvents() })
 })
 ```
 
-Use these examples as templates and apply the tables above to ensure your
-service and methods select valid combinations.
+使用这些示例作为模板，并应用上表来确保您的服务和方法选择有效的组合。
 
 

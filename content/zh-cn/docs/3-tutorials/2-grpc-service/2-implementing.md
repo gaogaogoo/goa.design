@@ -1,71 +1,71 @@
 ---
-title: "Implementing the Service"
-linkTitle: "Implementing"
+title: "实现服务"
+linkTitle: "实现"
 weight: 2
-description: "Guide to implementing gRPC services in Goa, covering code generation, service implementation, server setup, and understanding the generated gRPC artifacts."
+description: "在 Goa 中实现 gRPC 服务的指南，涵盖代码生成、服务实现、服务器搭建以及对生成的 gRPC 构件的理解。"
 ---
 
-After designing your gRPC service with Goa's DSL, it's time to bring it to life! This guide will walk you through implementing your service step by step. You'll learn how to:
+使用 Goa 的 DSL 设计好你的 gRPC 服务后，是时候让它真正运行起来了！本指南将一步步带你实现服务。你将学到：
 
-1. Generate the gRPC scaffolding
-2. Understand the generated code structure
-3. Implement your service logic
-4. Set up the gRPC server
+1. 生成 gRPC 脚手架
+2. 理解生成代码的结构
+3. 实现你的服务逻辑
+4. 搭建 gRPC 服务器
 
-## 1. Generate the gRPC Artifacts
+## 1. 生成 gRPC 构件
 
-First, let's generate all the necessary gRPC code. From your project root (e.g., `grpcgreeter/`), run:
+首先，让我们生成所有必要的 gRPC 代码。在项目根目录（例如 `grpcgreeter/`）执行：
 
 ```bash
 goa gen grpcgreeter/design
 go mod tidy
 ```
 
-This command analyzes your gRPC design (`greeter.go`) and generates the required code in the `gen/` directory. Here's what gets created:
+该命令会分析你的 gRPC 设计（`greeter.go`），并在 `gen/` 目录生成所需代码。将会创建如下结构：
 
 ```
 gen/
 ├── grpc/
 │   └── greeter/
-│       ├── pb/           # Protocol Buffers definitions
-│       ├── server/       # Server-side gRPC code
-│       └── client/       # Client-side gRPC code
-└── greeter/             # Service interfaces and types
+│       ├── pb/           # Protocol Buffers 定义
+│       ├── server/       # 服务端 gRPC 代码
+│       └── client/       # 客户端 gRPC 代码
+└── greeter/             # 服务接口与类型
 ```
 
-{{< alert title="Important" >}}
-Remember to rerun `goa gen` whenever you modify your design to keep the generated code in sync with your service definition.
+{{< alert title="重要" >}}
+每当你修改设计文件时，请重新运行 `goa gen`，以确保生成代码与服务定义保持同步。
 {{< /alert >}}
 
-## 2. Understanding the Generated Code
+## 2. 理解生成的代码
 
-Let's explore what Goa generated for us:
+来看看 Goa 为我们生成了什么：
 
-### Protocol Buffer Definitions (gen/grpc/greeter/pb/)
+### Protocol Buffer 定义（gen/grpc/greeter/pb/）
 
-- **`greeter.proto`**: The Protocol Buffers service definition
+- **`greeter.proto`**：Protocol Buffers 服务定义
   ```protobuf
   service Greeter {
     rpc SayHello (SayHelloRequest) returns (SayHelloResponse);
   }
   ```
-- **`greeter.pb.go`**: The compiled Go code from the `.proto` file
+- **`greeter.pb.go`**：由 `.proto` 文件编译生成的 Go 代码
 
-### Server-Side Code (gen/grpc/greeter/server/)
+### 服务端代码（gen/grpc/greeter/server/）
 
-- **`server.go`**: Maps your service methods to gRPC handlers
-- **`encode_decode.go`**: Converts between your service types and gRPC messages
-- **`types.go`**: Contains server-specific type definitions
+- **`server.go`**：将服务方法映射到 gRPC 处理器
+- **`encode_decode.go`**：在服务类型与 gRPC 消息之间进行转换
+- **`types.go`**：包含服务端特定的类型定义
 
-### Client-Side Code (gen/grpc/greeter/client/)
+### 客户端代码（gen/grpc/greeter/client/）
 
-- **`client.go`**: gRPC client implementation
-- **`encode_decode.go`**: Client-side serialization logic
-- **`types.go`**: Client-specific type definitions
+- **`client.go`**：gRPC 客户端实现
+- **`encode_decode.go`**：客户端序列化逻辑
+- **`types.go`**：客户端特定的类型定义
 
-## 3. Implementing Your Service
+## 3. 实现你的服务
 
-Now for the fun part - implementing your service logic! Create a new file called `greeter.go` in your service package:
+接下来是最有趣的部分——实现服务逻辑！在你的服务包中新建 `greeter.go` 文件：
 
 ```go
 package greeter
@@ -74,46 +74,46 @@ import (
     "context"
     "fmt"
 
-    // Use a descriptive alias for the generated package
+    // 对生成包使用描述性别名
     gengreeter "grpcgreeter/gen/greeter"
 )
 
-// GreeterService implements the Service interface
+// GreeterService 实现 Service 接口
 type GreeterService struct{}
 
-// NewGreeterService creates a new service instance
+// NewGreeterService 创建一个新的服务实例
 func NewGreeterService() *GreeterService {
     return &GreeterService{}
 }
 
-// SayHello implements the greeting logic
+// SayHello 实现问候逻辑
 func (s *GreeterService) SayHello(ctx context.Context, p *gengreeter.SayHelloPayload) (*gengreeter.SayHelloResult, error) {
-    // Add input validation if needed
+    // 如有需要可添加入参校验
     if p.Name == "" {
         return nil, fmt.Errorf("name cannot be empty")
     }
 
-    // Build the greeting
+    // 构建问候语
     greeting := fmt.Sprintf("Hello, %s!", p.Name)
     
-    // Return the result
+    // 返回结果
     return &gengreeter.SayHelloResult{
         Greeting: greeting,
     }, nil
 }
 ```
 
-### Best Practices for Implementation
+### 实现的最佳实践
 
-1. **Error Handling**: Use appropriate gRPC status codes
-2. **Validation**: Validate inputs early
-3. **Context Usage**: Respect context cancellation
-4. **Logging**: Add meaningful logs for debugging
-5. **Testing**: Write unit tests for your service logic
+1. 错误处理：使用合适的 gRPC 状态码
+2. 校验：尽早验证输入
+3. 上下文使用：尊重上下文取消
+4. 日志：添加有意义的日志以便调试
+5. 测试：为你的服务逻辑编写单元测试
 
-## 4. Setting Up the gRPC Server
+## 4. 搭建 gRPC 服务器
 
-Create your server entry point in `cmd/greeter/main.go`:
+在 `cmd/greeter/main.go` 中创建服务入口：
 
 ```go
 package main
@@ -136,30 +136,30 @@ import (
 )
 
 func main() {
-    // Create a TCP listener
+    // 创建 TCP 监听器
     lis, err := net.Listen("tcp", ":8090")
     if err != nil {
         log.Fatalf("failed to listen: %v", err)
     }
 
-    // Create a new gRPC server with options
+    // 创建带选项的 gRPC 服务器
     srv := grpc.NewServer(
         grpc.UnaryInterceptor(loggingInterceptor),
     )
 
-    // Initialize your service
+    // 初始化你的服务
     svc := greeter.NewGreeterService()
     
-    // Create endpoints
+    // 创建端点
     endpoints := gengreeter.NewEndpoints(svc)
     
-    // Register service with gRPC server
+    // 在 gRPC 服务器上注册服务
     genpb.RegisterGreeterServer(srv, genserver.New(endpoints, nil))
     
-    // Enable server reflection for debugging tools
+    // 启用服务器反射，便于调试工具使用
     reflection.Register(srv)
 
-    // Handle graceful shutdown
+    // 处理优雅关闭
     go func() {
         sigCh := make(chan os.Signal, 1)
         signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -168,55 +168,55 @@ func main() {
         srv.GracefulStop()
     }()
 
-    // Start serving
+    // 启动服务
     log.Printf("gRPC server listening on :8090")
     if err := srv.Serve(lis); err != nil {
         log.Fatalf("failed to serve: %v", err)
     }
 }
 
-// Example logging interceptor
+// 示例：日志拦截器
 func loggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
     log.Printf("Handling %s", info.FullMethod)
     return handler(ctx, req)
 }
 ```
 
-### Understanding the Server Code
+### 解析服务器代码
 
-Let's break down the key components of our gRPC server:
+下面分解 gRPC 服务器的关键组件：
 
-1. **TCP Listener Setup**:
+1. TCP 监听器设置：
    ```go
    lis, err := net.Listen("tcp", ":8090")
    ```
-   Opens port 8090 for incoming gRPC connections. This is where your service will listen for client requests.
+   打开 8090 端口以接受传入的 gRPC 连接。服务将在此端口监听客户端请求。
 
-2. **Server Creation**:
+2. 服务器创建：
    ```go
    srv := grpc.NewServer(
        grpc.UnaryInterceptor(loggingInterceptor),
    )
    ```
-   Creates a new gRPC server with middleware (interceptor) support. The logging interceptor will log every incoming request.
+   创建一个支持中间件（拦截器）的 gRPC 服务器。日志拦截器会记录所有传入请求。
 
-3. **Service Registration**:
+3. 服务注册：
    ```go
    svc := greeter.NewGreeterService()
    endpoints := gengreeter.NewEndpoints(svc)
    genpb.RegisterGreeterServer(srv, genserver.New(endpoints, nil))
    ```
-   - Creates your service implementation
-   - Wraps it in Goa's transport-agnostic endpoints
-   - Registers it with the gRPC server so it can handle incoming requests
+   - 创建你的服务实现
+   - 使用 Goa 的与传输无关的端点进行封装
+   - 将其注册到 gRPC 服务器以处理传入请求
 
-4. **Server Reflection**:
+4. 服务器反射：
    ```go
    reflection.Register(srv)
    ```
-   Enables gRPC reflection, allowing tools like `grpcurl` to discover your service methods dynamically.
+   启用 gRPC 反射，便于 `grpcurl` 等工具动态发现服务方法。
 
-5. **Graceful Shutdown**:
+5. 优雅关闭：
    ```go
    go func() {
        sigCh := make(chan os.Signal, 1)
@@ -225,52 +225,52 @@ Let's break down the key components of our gRPC server:
        srv.GracefulStop()
    }()
    ```
-   - Listens for interrupt signals (Ctrl+C) or termination requests
-   - Ensures in-flight requests complete before shutting down
-   - Prevents connection drops and data loss
+   - 监听中断信号（Ctrl+C）或终止请求
+   - 确保在关闭前已完成正在处理的请求
+   - 防止连接中断与数据丢失
 
-6. **Request Logging**:
+6. 请求日志：
    ```go
    func loggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
        log.Printf("Handling %s", info.FullMethod)
        return handler(ctx, req)
    }
    ```
-   - Intercepts every gRPC call before it reaches your service
-   - Logs the method being called
-   - Useful for debugging and monitoring
-   - Can be extended for metrics, authentication, or other cross-cutting concerns
+   - 在请求到达服务之前进行拦截
+   - 记录被调用的方法
+   - 便于调试与监控
+   - 可扩展用于指标、认证或其他横切关注点
 
-### Server Features
+### 服务器特性
 
-- **Graceful Shutdown**: Handles termination signals properly
-- **Logging**: Includes a basic request logging interceptor
-- **Reflection**: Enables tools like `grpcurl` to discover services
-- **Error Handling**: Proper error propagation to clients
-- **Extensibility**: Easy to add more interceptors for auth, metrics, etc.
+- 优雅关闭：正确处理终止信号
+- 日志：包含基础的请求日志拦截器
+- 反射：支持 `grpcurl` 等工具发现服务
+- 错误处理：将错误正确传播给客户端
+- 可扩展性：易于添加认证、指标等拦截器
 
-## 5. Building and Running
+## 5. 构建与运行
 
-1. **Build the service**:
+1. 构建服务：
    ```bash
    go build -o greeter cmd/greeter/main.go
    ```
 
-2. **Run the server**:
+2. 运行服务器：
    ```bash
    ./greeter
    ```
 
-Your gRPC service is now running and ready to accept connections on port 8090!
+现在你的 gRPC 服务已经运行，并在 8090 端口准备好接受连接！
 
-## Next Steps
+## 后续步骤
 
-Now that your service is implemented and running, you can:
+在实现并运行服务之后，你可以：
 
-- Move on to the [Running tutorial](../3-running) to test your service
-- Add metrics and monitoring
-- Implement additional service methods
-- Add authentication and authorization
-- Set up CI/CD pipelines
+- 继续阅读[运行教程](../3-running)以测试你的服务
+- 添加指标与监控
+- 实现更多服务方法
+- 添加认证与授权
+- 搭建 CI/CD 流水线
 
-Remember to check out the [gRPC Concepts](../../4-concepts/4-grpc) section for advanced topics like streaming, middleware, and error handling.
+别忘了查看 [gRPC 概念](../../4-concepts/4-grpc) 一章，了解流式传输、中间件与错误处理等高级主题。

@@ -1,104 +1,88 @@
 ---
-title: "Command Line Tool"
-linkTitle: "Command Line Tool"
+title: "命令行工具"
+linkTitle: "命令行工具"
 weight: 1
-description: "Learn about Goa's command-line tool for code generation, including installation, usage, and best practices."
+description: "了解 Goa 的代码生成命令行工具，包括安装、用法与最佳实践。"
 ---
 
-## Installation
+## 安装
 
-Install Goa's command-line tools using:
+使用以下命令安装 Goa 的命令行工具：
 
 ```bash
 go install goa.design/goa/v3/cmd/goa@latest
 ```
 
-## Available Commands
+## 可用命令
 
-### Generate Code (`goa gen`)
+### 生成代码（`goa gen`）
 
 ```bash
 goa gen <design-package-import-path> [-o <output-dir>]
 ```
 
-The `goa gen` command is the primary tool for code generation in Goa. When run,
-it processes your design package and generates the complete implementation code
-for your services. It recreates the entire `gen/` directory from scratch,
-ensuring all generated code stays in sync with your design. You should run this
-command every time you make changes to your design to regenerate the
-implementation code.
+`goa gen` 是 Goa 的主要代码生成命令。运行后会处理你的设计包，为服务生成完整的实现代码。每次都会从零重建 `gen/` 目录，确保所有生成代码与设计保持同步。每当你修改设计时，都应运行此命令以重新生成实现代码。
 
-### Create Example (`goa example`)
+### 创建示例（`goa example`）
 
 ```bash
 goa example <design-package-import-path> [-o <output-dir>]
 ```
 
-The `goa example` command helps you scaffold your initial service
-implementation. It creates example implementations and generates handler stubs
-with placeholder logic to get you started. This command is meant to be run just
-once when starting a new project, as it provides a foundation for your custom
-implementation. Importantly, it's designed to be safe - it won't overwrite any
-custom code you've already written, preserving your existing work.
+`goa example` 用于脚手架初始服务实现。它会创建示例实现并生成带有占位逻辑的处理器桩代码，帮助你快速上手。该命令通常在新项目开始时运行一次，为自定义实现提供基础。并且它是安全的——不会覆盖你已经编写的自定义代码，保护现有工作成果。
 
-### Show Version (`goa version`)
+### 显示版本（`goa version`）
 
 ```bash
 goa version
 ```
 
-Displays the installed version of Goa.
+显示已安装的 Goa 版本。
 
-## Usage Guidelines
+## 使用指南
 
-### Package Paths vs File Paths
+### 包路径 vs 文件路径
 
-All commands expect Go package import paths, not filesystem paths:
+所有命令都需要 Go 包导入路径，而不是文件系统路径：
 
 ```bash
-# ✅ Correct: using Go package import path
+# ✅ 正确：使用 Go 包导入路径
 goa gen goa.design/examples/calc/design
 
-# ❌ Incorrect: using filesystem path
+# ❌ 错误：使用文件系统路径
 goa gen ./design
 ```
 
-### Development Workflow
+### 开发工作流
 
-Initialization steps for a new Goa project:
+新建 Goa 项目的初始化步骤：
 
-1. Create initial design
-2. Run `goa gen` to generate base code
-3. Run `goa example` to create implementation stubs
-4. Deploy the stub service
+1. 编写初始设计
+2. 运行 `goa gen` 生成基础代码
+3. 运行 `goa example` 创建实现桩
+4. 部署桩服务（stub service）
 
-Deploying the stub service early aligns your initial development with regular
-maintenance workflows. This approach lets you:
-- Validate deployment procedures before adding complex logic
-- Set up monitoring and observability from day one
-- Follow the same development cycle for both new and existing services
+尽早部署桩服务可让初始开发与常规维护流程保持一致。这样可以：
+- 在加入复杂逻辑前验证部署流程
+- 从第一天就建立监控与可观测性
+- 让新老服务遵循相同的开发周期
 
-Once your stub service is deployed, the regular development cycle begins. This
-involves implementing your actual service logic in the generated handlers,
-running `goa gen` whenever you make changes to your design, and continuously
-testing and iterating on your implementation. This cycle ensures your
-implementation stays in sync with your design while allowing you to focus on
-building the core business logic of your service.
+一旦桩服务部署完成，即进入常规开发周期：在生成的处理器中实现真实业务逻辑；每次修改设计后运行 `goa gen`；持续测试并迭代实现。该循环确保实现与设计保持同步，同时让你专注于服务核心业务逻辑的构建。
 
-## Best Practices
+## 最佳实践
 
-Generated code should be committed to version control rather than generated during CI/CD pipelines. Here's why:
+建议将生成代码提交到版本控制，而不是在 CI/CD 流水线中临时生成，原因如下：
 
-- **Reproducible Builds**: Committed generated code ensures consistent builds across environments
-- **Dependency Resolution**: Tools like `go get` work reliably with committed code in repositories
-- **Version Control Benefits**: 
-  - Track changes in generated code over time
-  - Review generated code changes during code review
-  - Roll back to previous versions if needed
-- **CI/CD Efficiency**: Avoid running generators in CI/CD, making pipelines faster and more reliable
+- **可复现构建**：提交的生成代码能在不同环境中保持一致的构建结果
+- **依赖解析稳定**：诸如 `go get` 等工具在仓库中能稳定解析依赖
+- **版本控制收益**：
+  - 跟踪生成代码的历史变化
+  - 在评审中审阅生成代码的差异
+  - 需要时可回滚到之前版本
+- **提升 CI/CD 效率**：避免在 CI/CD 中运行生成器，使流水线更快更稳定
 
-{{< alert title="Command Line Tips" color="primary" >}}
-- Deploy stub service early in development to validate design
-- Run `goa gen` after every design change to keep implementation in sync
-- Use version control to track generated code changes systematically
+{{< alert title="命令行提示" color="primary" >}}
+- 在开发早期部署桩服务以验证设计
+- 每次设计变更后运行 `goa gen` 保持实现同步
+- 使用版本控制系统性跟踪生成代码变更
 {{< /alert >}}

@@ -1,75 +1,59 @@
 ---
-title: gRPC Interceptors
+title: gRPC 拦截器
 weight: 4
 description: >
-  Learn how to create gRPC interceptors that work effectively with Goa services, with practical examples and integration patterns.
+  学习如何创建能与 Goa 服务有效协作的 gRPC 拦截器，并提供实际示例和集成模式。
 ---
 
-Goa services use standard gRPC interceptors, which means you can use any gRPC
-interceptor that follows the standard pattern. This guide shows you how to create
-effective gRPC interceptors that work well with Goa services, with examples drawn
-from real-world usage.
+Goa 服务使用标准的 gRPC 拦截器，这意味着您可以使用任何遵循标准模式的 gRPC 拦截器。本指南将向您展示如何创建能与 Goa 服务良好协作的高效 gRPC 拦截器，并提供来自实际应用的示例。
 
-gRPC interceptors should focus on protocol-level concerns like metadata handling,
-connection management, and message transformation. For business logic and type-safe
-access to your service's payloads and results, use Goa interceptors instead.
-Goa interceptors provide direct access to your service's domain types and are better
-suited for business-level concerns.
+gRPC 拦截器应专注于协议层面的问题，如元数据处理、连接管理和消息转换。对于业务逻辑和类型安全地访问服务的有效载荷和结果，应改用 Goa 拦截器。Goa 拦截器提供对服务领域类型的直接访问，更适合处理业务层面的问题。
 
-## Types of Interceptors
+## 拦截器类型
 
-gRPC supports two types of interceptors, each serving different use cases:
+gRPC 支持两种类型的拦截器，每种都有不同的用例：
 
-1. **Unary Interceptors**: Handle single request/response RPCs, like traditional
-   API calls. These are simpler to implement and are the most common type.
+1.  **一元拦截器 (Unary Interceptors)**：处理单个请求/响应的 RPC，类似于传统的 API 调用。这类拦截器实现起来更简单，也是最常见的类型。
 
-2. **Stream Interceptors**: Handle streaming RPCs where either the client, server,
-   or both can send multiple messages. These require more complex handling of the
-   stream lifecycle.
+2.  **流拦截器 (Stream Interceptors)**：处理客户端、服务器或两者都可以发送多条消息的流式 RPC。这类拦截器需要更复杂的流生命周期处理。
 
-## Common Use Cases
+## 常见用例
 
-Here are some common scenarios where gRPC interceptors are particularly useful:
+以下是一些 gRPC 拦截器特别有用的常见场景：
 
-1. **Metadata Propagation**: Handling trace IDs, request IDs, and other metadata
-3. **Logging**: Recording RPC method calls and their outcomes
-4. **Monitoring**: Collecting metrics about RPC calls
-5. **Error Handling**: Converting between gRPC and domain errors
-6. **Rate Limiting**: Controlling the rate of incoming requests
-7. **Load Shedding**: Protecting services during high load
+1.  **元数据传播 (Metadata Propagation)**：处理跟踪 ID、请求 ID 和其他元数据
+2.  **日志记录 (Logging)**：记录 RPC 方法调用及其结果
+3.  **监控 (Monitoring)**：收集有关 RPC 调用的指标
+4.  **错误处理 (Error Handling)**：在 gRPC 和领域错误之间进行转换
+5.  **速率限制 (Rate Limiting)**：控制传入请求的速率
+6.  **负载削减 (Load Shedding)**：在高负载期间保护服务
 
-## Best Practices
+## 最佳实践
 
-When implementing gRPC interceptors for Goa services:
+在为 Goa 服务实现 gRPC 拦截器时：
 
-1. **Focus on Protocol Concerns**: Use gRPC interceptors for protocol-level
-   operations like metadata handling. Use Goa interceptors for business logic.
+1.  **专注于协议问题 (Focus on Protocol Concerns)**：使用 gRPC 拦截器进行协议层面的操作，如元数据处理。使用 Goa 拦截器处理业务逻辑。
 
-2. **Handle Context Properly**: Always respect context cancellation and propagate
-   context values correctly.
+2.  **正确处理上下文 (Handle Context Properly)**：始终尊重上下文取消并正确传播上下文值。
 
-3. **Be Consistent**: Apply the same interceptor patterns across your service for
-   predictable behavior.
+3.  **保持一致 (Be Consistent)**：在整个服务中应用相同的拦截器模式，以实现可预测的行为。
 
-4. **Consider Performance**: Interceptors run on every request, so keep them
-   efficient.
+4.  **考虑性能 (Consider Performance)**：拦截器在每个请求上运行，因此要保持其高效。
 
-5. **Error Handling**: Use appropriate gRPC status codes and include relevant
-   error details.
+5.  **错误处理 (Error Handling)**：使用适当的 gRPC 状态码并包含相关的错误详细信息。
 
-6. **Testing**: Test interceptors thoroughly, including error cases and context
-   cancellation.
+6.  **测试 (Testing)**：彻底测试拦截器，包括错误情况和上下文取消。
 
-## Integration with Goa
+## 与 Goa 集成
 
-Here's how to integrate gRPC interceptors with a Goa service:
+以下是如何将 gRPC 拦截器与 Goa 服务集成：
 
 ```go
 func main() {
-    // Create gRPC server with interceptors
+    // 创建带拦截器的 gRPC 服务器
     srv := grpc.NewServer(
         grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-            // Protocol-level concerns in gRPC interceptors
+            // gRPC 拦截器中的协议层面问题
             MetadataInterceptor(),
             LoggingInterceptor(),
             MonitoringInterceptor(),
@@ -81,20 +65,20 @@ func main() {
         )),
     )
 
-    // Register Goa gRPC server
+    // 注册 Goa gRPC 服务器
     pb.RegisterServiceServer(srv, server)
 }
 ```
 
-This example demonstrates:
-- Chaining multiple interceptors using the `go-grpc-middleware` package
-- Separating unary and stream interceptors
-- Focusing on protocol-level concerns
+此示例演示了：
+- 使用 `go-grpc-middleware` 包链接多个拦截器
+- 分离一元和流拦截器
+- 专注于协议层面的问题
 
-## Next Steps
+## 下一步
 
-- Learn about [Unary Interceptors](@/docs/4-concepts/5-interceptors/3-grpc-interceptors/1-unary.md)
-- Explore [Stream Interceptors](@/docs/4-concepts/5-interceptors/3-grpc-interceptors/2-stream.md)
-- Review [Goa Interceptors](@/docs/4-concepts/5-interceptors/1-overview.md) for business logic
-- Check out [Error Handling](@/docs/4-concepts/4-error-handling.md) for error conversion strategies
+- 了解[一元拦截器](@/docs/4-concepts/5-interceptors/3-grpc-interceptors/1-unary.md)
+- 探索[流拦截器](@/docs/4-concepts/5-interceptors/3-grpc-interceptors/2-stream.md)
+- 回顾 [Goa 拦截器](@/docs/4-concepts/5-interceptors/1-overview.md) 以处理业务逻辑
+- 查看[错误处理](@/docs/4-concepts/4-error-handling.md) 以了解错误转换策略
 

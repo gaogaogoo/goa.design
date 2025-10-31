@@ -1,58 +1,50 @@
 ---
-title: "Types and Validation"
-description: "Understanding how Goa handles types, pointers, and validation in generated code"
+title: "类型与校验"
+description: "理解 Goa 在生成代码中如何处理类型、指针与校验"
 weight: 8
 ---
 
-## Validation Enforcement
+## 校验执行策略
 
-Goa takes a pragmatic approach to validation, balancing performance with
-robustness. The framework validates data at system boundaries while trusting
-internal operations:
+Goa 在校验上采取务实的策略，兼顾性能与健壮性。框架会在系统边界对数据进行校验，同时信任内部代码：
 
-* **Server-side**: Validates incoming requests
-* **Client-side**: Validates incoming responses
-* **Internal code**: Trusted to maintain invariants
+* **服务端**：校验入站请求
+* **客户端**：校验入站响应
+* **内部代码**：信任其维持不变量
 
-This approach ensures your code always receives valid data while avoiding
-unnecessary validation overhead for internal operations.
+该策略确保你的代码始终接收有效数据，同时避免对内部操作施加不必要的校验开销。
 
-## Generated Struct Fields and Pointers
+## 生成结构体字段与指针用法
 
-The code generation algorithms in Goa carefully consider when to use pointers
-for struct fields. The goal is to minimize pointer usage while maintaining type
-safety and proper null handling.
+Goa 的代码生成算法会谨慎判断何时在结构体字段上使用指针。目标是在保证类型安全与正确的空值处理的前提下，尽量减少指针的使用。
 
-### Rules for Primitive Types
+### 原始类型的规则
 
-When Goa generates code, it needs to make decisions about how to represent
-fields in the generated structs. One of the key decisions is whether to use a
-pointer (*) or a direct value (-) for primitive types (like `string`, `int`,
-`bool`, etc.).
+Goa 在生成代码时需要决定如何在结构体中表示字段。其中一个关键决策是：对原始类型（如 `string`、`int`、`bool` 等）使用指针（*）还是直接值（-）。
 
-#### Understanding the Terms
+#### 术语释义
 
-Before diving into the rules, let's clarify the key terms:
+在深入规则之前，先澄清几个关键术语：
 
-- **Payload/Result**: These are the method arguments and return values in your service design
-  - Payload: The data your service method receives (e.g., `method (payload *CreateUserPayload)`)
-  - Result: The data your service method returns (e.g., `returns (UserResult)`)
+- **Payload/Result（载荷/结果）**：服务设计中的方法参数与返回值
+  - Payload：服务方法接收的数据（例如：`method (payload *CreateUserPayload)`）
+  - Result：服务方法返回的数据（例如：`returns (UserResult)`）
 
-- **Request/Response Bodies**: These are the HTTP or gRPC transport-level structures
-  - Request Body: The data structure that carries the incoming HTTP/gRPC request data
-  - Response Body: The data structure that carries the outgoing HTTP/gRPC response data
+- **Request/Response Bodies（请求/响应体）**：HTTP 或 gRPC 传输层的结构
+  - Request Body：承载入站 HTTP/gRPC 请求数据的结构
+  - Response Body：承载出站 HTTP/gRPC 响应数据的结构
 
-For example, in a REST API:
+以 REST API 为例：
 ```go
-// In your design:
+// 在你的设计中：
 var _ = Service("users", func() {
     Method("create", func() {
         Payload(func() {
-            Field(1, "name", String)  // This is a payload field
+            Field(1, "name", String)  // 这是载荷字段
             Required("name")
         })
         Result(func() {
-            Field(1, "id", Int)      // This is a result field
+            Field(1, "id", Int)      // 这是结果字段
         })
         HTTP(func() {
             POST("/users")
@@ -61,98 +53,89 @@ var _ = Service("users", func() {
     })
 })
 
-// Goa generates:
+// Goa 生成：
 type CreatePayload struct {
-    Name string            // Payload field
+    Name string            // 载荷字段
 }
 
 type CreateRequestBody struct {
-    Name *string           // Request body field
+    Name *string           // 请求体字段
 }
 
 type CreateResult struct {
-    ID int                // Result field
+    ID int                // 结果字段
 }
 
 type CreateResponseBody struct {
-    ID int                // Response body field
+    ID int                // 响应体字段
 }
 ```
 
-The rules vary depending on:
-1. Whether the field is required or has a default value
-2. Where the field is being used (payload, request, response)
-3. Which side of the communication it's on (server or client)
+具体规则取决于：
+1. 字段是否为必填或是否具有默认值
+2. 字段所处位置（载荷、请求、响应）
+3. 字段所在通信侧（服务端或客户端）
 
-Here's a detailed breakdown:
+详细规则如下：
 
-| Properties | Payload/Result | Request Body (Server) | Response Body (Server) | Request Body (Client) | Response Body (Client) |
+| 属性 | 载荷/结果 | 请求体（服务端） | 响应体（服务端） | 请求体（客户端） | 响应体（客户端） |
 |------------|---------------|----------------------|---------------------|-------------------|-------------------|
-| Required OR Default | Direct (-) | Pointer (*) | Direct (-) | Direct (-) | Pointer (*) |
-| Not Required, No Default | Pointer (*) | Pointer (*) | Pointer (*) | Pointer (*) | Pointer (*) |
+| 必填或有默认值 | 直接值（-） | 指针（*） | 直接值（-） | 直接值（-） | 指针（*） |
+| 非必填且无默认值 | 指针（*） | 指针（*） | 指针（*） | 指针（*） | 指针（*） |
 
-Let's break this down with examples:
+示例说明：
 
-1. **Required or Default Value Fields**:
-   - In most cases, these use direct values (not pointers)
-   - Example: A required `name string` field in a payload will be generated as `Name string`
-   - Exception: Server request bodies and client response bodies use pointers for better null handling
+1. **必填或有默认值的字段**：
+   - 大多数情况下使用直接值（非指针）
+   - 例如：载荷中的必填 `name string` 会生成为 `Name string`
+   - 例外：服务端请求体与客户端响应体使用指针以更好处理空值
 
-2. **Optional Fields (Not Required, No Default)**:
-   - Always use pointers across all contexts
-   - Example: An optional `age int` field will be generated as `Age *int`
-   - This allows distinguishing between an unset value (nil) and zero value (0)
+2. **可选字段（非必填、无默认值）**：
+   - 在所有上下文中均使用指针
+   - 例如：可选的 `age int` 会生成为 `Age *int`
+   - 这样可以区分未设置（nil）与零值（0）
 
-3. **Special Types**:
-   - Objects (structs): Always use pointers regardless of required/optional status
-   - Arrays and Maps: Never use pointers as they are already reference types
-   - Example: `[]string` or `map[string]int` (not `*[]string` or `*map[string]int`)
+3. **特殊类型**：
+   - 对象（结构体）：无论必填与否，一律使用指针
+   - 数组与映射：从不使用指针（它们本身是引用类型）
+   - 示例：`[]string` 或 `map[string]int`（而非 `*[]string` 或 `*map[string]int`）
 
-The reasoning behind these rules:
-- Pointers allow for explicit nil values, useful for optional fields
-- Direct values are more efficient when we know a value will always be present
-- The asymmetry in request/response handling helps with proper serialization and validation
+规则背后的原因：
+- 指针可明确表达 nil 值，适用于可选字段
+- 在确定值始终存在的情况下使用直接值更高效
+- 在请求/响应的非对称处理有助于正确序列化与校验
 
-**Example Scenario**:
+**示例场景**：
 ```go
-// For a design with these fields:
-//   - name:     string (required)
-//   - age:      int    (optional)
+// 设计包含以下字段：
+//   - name:     string（必填）
+//   - age:      int   （可选）
 //   - hobbies:  []string
 //   - metadata: map[string]string
 
-// The generated struct in the service package would look like:
+// 服务包中的生成结构体如下：
 type Person struct {
-    Name     string             // required, direct value
-    Age      *int               // optional, pointer
-    Hobbies  []string           // array, no pointer
-    Metadata map[string]string  // map, no pointer
+    Name     string             // 必填，直接值
+    Age      *int               // 可选，指针
+    Hobbies  []string           // 数组，不用指针
+    Metadata map[string]string  // 映射，不用指针
 }
 ```
 
-## Default Value Handling
+## 默认值处理
 
-Default values specified in the design are used in two key scenarios:
+在设计中指定的默认值会在两种关键场景下使用：
 
-### 1. During Marshaling (Outgoing Data)
+### 1. 编码（出站数据）
 
-When marshaling data for output, default values play an important role in
-handling nil values. For array and map fields that are nil, the default values
-specified in the design are used to initialize them. However, this doesn't apply
-to primitive fields since they cannot be nil - they always have their zero value
-(0 for numbers, "" for strings, etc).
+在对外编码数据时，默认值有助于处理 nil 情况。对于为 nil 的数组与映射字段，会使用设计中指定的默认值进行初始化。但这不适用于原始类型字段，因为它们不能为 nil——始终具有零值（数字为 0、字符串为 "" 等）。
 
-### 2. During Unmarshaling (Incoming Data)
+### 2. 解码（入站数据）
 
-When unmarshaling incoming data, default values are only applied to optional
-fields that are missing from the input. If a required field is missing, this
-will trigger a validation error instead of applying a default value. For gRPC
-specifically, there is special handling for default values during unmarshaling -
-see the [gRPC Unmarshaling](../4-grpc/7-unmarshalling) section for
-details.
+在解码入站数据时，默认值仅应用于输入中缺失的可选字段。如果缺失的是必填字段，则会触发校验错误而不是应用默认值。针对 gRPC 的解码存在专门的默认值处理——详见 [gRPC 解码](../4-grpc/7-unmarshalling) 一节。
 
-### Best Practices
+### 最佳实践
 
-* Use default values to provide sensible fallbacks for optional fields
-* Consider the impact on API versioning when changing default values
-* Document default values clearly in your API specification 
+* 使用默认值为可选字段提供合理回退
+* 修改默认值时考虑对 API 版本的影响
+* 在 API 规范中清晰记录默认值

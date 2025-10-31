@@ -1,30 +1,29 @@
 ---
-title: "HTTP Advanced Topics"
-linkTitle: "HTTP Advanced Topics"
+title: "HTTP 高级主题"
+linkTitle: "HTTP 高级主题"
 weight: 3
-description: "Learn HTTP-specific features and patterns in Goa, building upon the REST API basics with advanced topics and real-world scenarios."
+description: "学习 Goa 中与 HTTP 相关的特性与模式，基于 REST API 基础，涵盖高级主题与真实场景。"
 menu:
   main:
-    parent: "Concepts"
+    parent: "概念"
     weight: 3
 ---
 
-This section covers HTTP-specific features and patterns in Goa, complementing
-the [Basic REST API](../1-rest-api) tutorial with more advanced topics.
+本章节介绍 Goa 中特定于 HTTP 的特性与模式，作为对[基础 REST API](../1-rest-api) 教程的高级补充。
 
-## Before You Begin
+## 开始之前
 
-Make sure you've completed:
-1. The [Basic REST API](../1-rest-api) tutorial for foundational concepts
-2. The [Error Handling](../3-error-handling) section for HTTP error responses
-3. The [Streaming](../4-streaming) section for streaming (WebSocket) design
+请确保你已经完成：
+1. [基础 REST API](../1-rest-api) 教程以掌握基础概念
+2. [错误处理](../3-error-handling) 章节以了解 HTTP 错误响应
+3. [流式传输](../4-streaming) 章节以设计流式（WebSocket）交互
 
-## Related Topics
+## 相关主题
 
-- For file uploads and downloads, see [Files Uploads & Downloads](../../5-real-world/3-common-patterns/2-file-upload-download.md)
-- For error responses, see [Error Handling](../../3-tutorials/3-error-handling)
-- For security patterns, see [Security](../../4-concepts/5-security)
-- For encoding details, see [HTTP Encoding](../../4-concepts/4-http-encoding)
-- For middleware patterns, see [Middleware](../../5-interceptors/2-http-middleware)
+- 关于文件上传与下载，请参见 [文件上传与下载](../../5-real-world/3-common-patterns/2-file-upload-download.md)
+- 关于错误响应，请参见 [错误处理](../../3-tutorials/3-error-handling)
+- 关于安全模式，请参见 [安全](../../4-concepts/5-security)
+- 关于编码细节，请参见 [HTTP 编码](../../4-concepts/4-http-encoding)
+- 关于中间件模式，请参见 [中间件](../../5-interceptors/2-http-middleware)
 
 

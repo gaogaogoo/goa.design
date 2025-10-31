@@ -1,13 +1,8 @@
 ---
-linkTitle: Error Handling
-title: Error Handling
+linkTitle: 错误处理
+title: 错误处理
 weight: 3
-description: "Comprehensive guide to error handling in Goa, covering error definition, transport mapping, custom error types, and best practices for building reliable APIs."
+description: "Goa 错误处理的完整指南，涵盖错误定义、传输层映射、自定义错误类型，以及构建可靠 API 的最佳实践。"
 ---
 
-Effective error handling is crucial for building reliable and maintainable APIs.
-Goa provides a robust DSL to define and manage errors within your services,
-ensuring consistent and clear communication between your server and clients.
-This section covers all aspects of error handling in Goa, from defining errors
-to mapping them to transport-specific status codes and best practices for
-implementation.
+有效的错误处理是构建可靠、可维护 API 的关键。Goa 提供健壮的 DSL 来在服务中定义与管理错误，确保服务端与客户端之间的沟通一致且清晰。本节涵盖 Goa 中错误处理的各个方面：从定义错误到将其映射到特定传输协议的状态码，以及实现过程中的最佳实践。

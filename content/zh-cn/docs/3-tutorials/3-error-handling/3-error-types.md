@@ -1,32 +1,28 @@
 ---
-title: "Error Types"
-linkTitle: Error Types
+title: "错误类型"
+linkTitle: 错误类型
 weight: 3
-description: "Explore Goa's error type system, including the default ErrorResult type and how to create custom error types for more complex error scenarios."
+description: "探索 Goa 的错误类型系统，包括默认的 ErrorResult 类型，以及如何创建自定义错误类型以应对更复杂的错误场景。"
 ---
 
-Goa allows you to define errors using either the default `ErrorResult` type or
-custom user-defined types. Choosing the appropriate error type depends on the
-complexity and specificity of the errors you need to represent.
+Goa 允许你使用默认的 `ErrorResult` 类型或自定义的用户定义类型来定义错误。选择合适的错误类型取决于你需要表示的错误的复杂度与特异性。
 
-## Default Error Type (`ErrorResult`)
+## 默认错误类型（`ErrorResult`）
 
-By default, errors use the `ErrorResult` type, which includes standard fields
-such as `Name`, `ID`, `Message`, `Temporary`, `Timeout`, and `Fault`. This
-provides a consistent structure for errors across your service.
+默认情况下，错误使用 `ErrorResult` 类型，该类型包含标准字段，如 `Name`、`ID`、`Message`、`Temporary`、`Timeout` 和 `Fault`。它为你的服务提供了统一的错误结构。
 
-### Structure and Fields
+### 结构与字段
 
-- **Name**: The name of the error, as defined in the DSL.
-- **ID**: A unique identifier for the specific instance of the error, useful for correlating logs and traces.
-- **Message**: A descriptive error message.
-- **Temporary**: Indicates whether the error is temporary and might be resolved upon retrying.
-- **Timeout**: Indicates whether the error was caused by a timeout.
-- **Fault**: Indicates whether the error was due to a server-side fault.
+- Name：在 DSL 中定义的错误名称。
+- ID：该错误实例的唯一标识符，用于关联日志与追踪。
+- Message：描述性的错误消息。
+- Temporary：指示错误是否为临时的，重试后可能恢复。
+- Timeout：指示错误是否由超时导致。
+- Fault：指示错误是否由于服务端故障引起。
 
-### Usage Example
+### 使用示例
 
-Define a service-level error using the default `ErrorResult`:
+使用默认的 `ErrorResult` 定义服务级错误：
 
 ```go
 var _ = Service("divider", func() {
@@ -38,44 +34,35 @@ var _ = Service("divider", func() {
 })
 ```
 
-In this example, we define two service-level errors that can be returned by any
-method within the `divider` service. The `DivByZero` error represents a division
-by zero operation, while the `ServiceUnavailable` error indicates a temporary
-service outage. Both errors use the default `ErrorResult` type, but the
-`ServiceUnavailable` error is marked as temporary using the `Temporary()`
-function, indicating that clients may retry the operation.
+在此示例中，我们定义了两个可被 `divider` 服务中任意方法返回的服务级错误。`DivByZero` 表示除数为零的操作，而 `ServiceUnavailable` 表示服务的临时不可用。两者都使用默认的 `ErrorResult` 类型，但 `ServiceUnavailable` 通过 `Temporary()` 标记为临时错误，提示客户端可以重试。
 
-### Runtime Representation
+### 运行时表示
 
-The generated code defines functions that instantiate
-[ServiceError](https://pkg.go.dev/goa.design/goa/v3/pkg#ServiceError) objects
-for the `DivByZero` and `ServiceUnavailable` errors. These functions take
-care of setting the appropriate fields for the error:
+生成的代码会定义函数以实例化
+[ServiceError](https://pkg.go.dev/goa.design/goa/v3/pkg#ServiceError) 对象，
+用于 `DivByZero` 与 `ServiceUnavailable` 错误。这些函数负责设置错误的合适字段：
 
 ```go
-// MakeDivByZero builds a goa.ServiceError from an error. 
+// MakeDivByZero 从一个 error 构建 goa.ServiceError。
 func MakeDivByZero(err error) *goa.ServiceError {
     return goa.NewServiceError(err, "DivByZero", false, false, false)
 }
 
-// MakeServiceUnavailable builds a goa.ServiceError from an error.
+// MakeServiceUnavailable 从一个 error 构建 goa.ServiceError。
 func MakeServiceUnavailable(err error) *goa.ServiceError {
     return goa.NewServiceError(err, "ServiceUnavailable", true, false, false)
 }
 ```
 
-Clients can cast the error returned by the service to the `ServiceError` type
-and then use the `Temporary`, `Timeout`, and `Fault` fields to check the error
-details.
+客户端可将服务返回的错误转换为 `ServiceError` 类型，并通过 `Temporary`、`Timeout` 与 `Fault` 字段检查错误细节。
 
-## Custom Error Types
+## 自定义错误类型
 
-For more detailed error information, you can define custom error types. This
-allows you to include additional fields specific to your application's needs.
+为了提供更详尽的错误信息，你可以定义自定义错误类型。这允许你包含特定于应用需求的附加字段。
 
-### Creating a Custom Error Type
+### 创建自定义错误类型
 
-Define a custom error type using the `Type` function:
+使用 `Type` 函数定义自定义错误类型：
 
 ```go
 var DivByZero = Type("DivByZero", func() {
@@ -86,9 +73,9 @@ var DivByZero = Type("DivByZero", func() {
 })
 ```
 
-### Using a Custom Error Type in a Service
+### 在服务中使用自定义错误类型
 
-Integrate the custom error type within a service method:
+将自定义错误类型集成到服务方法中：
 
 ```go
 var _ = Service("divider", func() {
@@ -109,17 +96,11 @@ var _ = Service("divider", func() {
 })
 ```
 
-In this example, we define a method-level error called `DivByZero` that uses
-the custom `DivByZero` type. This allows us to provide detailed error
-information specific to division by zero scenarios, including both the error
-message and the actual divisor value that caused the error.
+在此示例中，我们定义了一个名为 `DivByZero` 的方法级错误，它使用了自定义的 `DivByZero` 类型。这使我们能够提供特定于除数为零场景的详细错误信息，包括错误消息和导致错误的实际除数值。
 
-### Caveats When Using Custom Error Types
+### 使用自定义错误类型的注意事项
 
-- **Error Metadata**: When using custom types for multiple errors within the
-  same method, you must specify which attribute contains the error name using the
-  `struct:error:name` metadata. This is essential for Goa to correctly map errors
-  to their definitions.
+- 错误元数据：当在同一方法中使用自定义类型定义多个错误时，必须通过 `struct:error:name` 元数据指定哪个属性包含错误名称。这对 Goa 正确映射错误到其定义至关重要。
 
 ```go
 var CustomError = Type("CustomError", func() {
@@ -131,6 +112,4 @@ var CustomError = Type("CustomError", func() {
 })
 ```
 
-- **Reserved Attributes**: Custom error types cannot have an attribute named
-  `error_name` as Goa uses this internally for error identification and
-  serialization.
+- 保留属性：自定义错误类型不能包含名为 `error_name` 的属性，因为 Goa 在内部使用它来进行错误标识与序列化。

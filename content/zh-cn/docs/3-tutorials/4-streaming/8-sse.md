@@ -1,98 +1,89 @@
 ---
-title: "Server-Sent Events"
+title: "服务器发送事件（Server-Sent Events）"
 linkTitle: "SSE"
 weight: 8
 description: >
-  Learn how to implement Server-Sent Events (SSE) endpoints in your Goa services.
+  学习如何在 Goa 服务中实现服务器发送事件（SSE）端点。
 ---
 
-Server-Sent Events (SSE) is a HTTP-based server-to-client streaming protocol
-that enables real-time updates from the server to the client. Goa provides
-native support for implementing SSE endpoints, making it easy to add real-time
-streaming capabilities to your services.
+服务器发送事件（SSE）是一种基于 HTTP 的服务器到客户端的流式协议，可实现从服务器到客户端的实时更新。Goa 原生支持实现 SSE 端点，使你可以轻松为服务添加实时流能力。
 
-## Overview
+## 概览
 
-SSE is particularly useful for scenarios where you need to push updates from the
-server to the client. Think of it like a one-way radio broadcast - the server
-sends messages, and clients receive them. This makes it perfect for:
+SSE 特别适用于需要从服务器主动推送更新到客户端的场景。可以把它看作单向的“电台广播”——服务器发送消息，客户端接收消息。它非常适合：
 
-- Real-time notifications that keep users informed
-- Live data feeds that update automatically
-- Progress updates for long-running operations
-- Event streaming for monitoring and logging
+- 实时通知，让用户随时了解最新信息
+- 自动更新的实时数据源
+- 长时间运行操作的进度更新
+- 用于监控与日志的事件流
 
-The protocol is built on standard HTTP, which means it's simple to implement and
-works well with modern web browsers and HTTP clients. When a connection is lost,
-clients automatically attempt to reconnect, making it reliable for real-time
-applications.
+该协议基于标准 HTTP，因而实现简单、与现代浏览器和 HTTP 客户端兼容性好。当连接丢失时，客户端会自动尝试重连，使其在实时应用中具有可靠性。
 
-### When to Use SSE in Goa
+### 何时在 Goa 中使用 SSE
 
-Goa provides three main streaming options:
+Goa 提供三种主要的流式选项：
 
-1. **Server-Sent Events (SSE)**: One-way server-to-client streaming over HTTP
-2. **WebSocket**: Bi-directional streaming with full-duplex communication
-3. **gRPC**: High-performance RPC with streaming support
+1. **服务器发送事件（SSE）**：基于 HTTP 的单向服务器到客户端流
+2. **WebSocket**：支持全双工的双向流通信
+3. **gRPC**：高性能的 RPC，支持流式
 
-Choose SSE when:
-- You only need server-to-client communication
-- You want to leverage HTTP's simplicity and compatibility
-- You need automatic reconnection handling
-- You're building a web application that needs real-time updates
+在以下情况下选择 SSE：
+- 只需要服务器到客户端的通信
+- 希望利用 HTTP 的简单性与兼容性
+- 需要自动重连处理
+- 构建需要实时更新的 Web 应用
 
-## Implementation
+## 实现
 
-### Design
+### 设计
 
-Let's create a complete SSE service. First, create a new file in your `design`
-package (e.g., `design/sse.go`):
+我们来创建一个完整的 SSE 服务。首先，在你的 `design` 包中创建新文件（例如 `design/sse.go`）：
 
 ```go
 package design
 
 import . "goa.design/goa/v3/dsl"
 
-// Event represents a message sent via SSE
+// Event 表示通过 SSE 发送的消息
 var Event = Type("Event", func() {
-    Description("A notification message sent via SSE")
-    Attribute("message", String, "Message body")
-    Attribute("timestamp", Int, "Unix timestamp")
+    Description("通过 SSE 发送的通知消息")
+    Attribute("message", String, "消息体")
+    Attribute("timestamp", Int, "Unix 时间戳")
     Required("message", "timestamp")
 })
 
-// SSEService defines the SSE service
+// SSEService 定义 SSE 服务
 var _ = Service("sse", func() {
-    Description("Service that demonstrates Server-Sent Events")
+    Description("演示服务器发送事件的服务")
 
     Method("stream", func() {
-        Description("Stream events using Server-Sent Events")
-        StreamingResult(Event) // SSE methods must use StreamingResult
+        Description("使用 SSE 进行事件流式传输")
+        StreamingResult(Event) // SSE 方法必须使用 StreamingResult
         HTTP(func() {
             GET("/events/stream")
-            ServerSentEvents() // Use SSE instead of WebSocket
+            ServerSentEvents() // 使用 SSE 而非 WebSocket
         })
     })
 })
 ```
 
-### Code Generation
+### 代码生成
 
-After defining the design, generate the service code:
+定义设计后，生成服务代码：
 
 ```bash
 goa gen github.com/yourusername/yourproject/design
 ```
 
-This will create:
-- Service interface and implementation stubs
-- HTTP server and client code
-- OpenAPI specification
-- Example client code
+这将生成：
+- 服务接口与实现存根
+- HTTP 服务器与客户端代码
+- OpenAPI 规范
+- 客户端示例代码
 
-### Server Implementation
+### 服务器端实现
 
-Create a new file for your service implementation (e.g., `sse.go`):
+为服务实现创建新文件（例如 `sse.go`）：
 
 ```go
 package sse
@@ -105,24 +96,24 @@ import (
 )
 
 type Service struct {
-    // Add any dependencies here
+    // 在此添加依赖
 }
 
-// NewService creates a new SSE service
+// NewService 创建一个新的 SSE 服务
 func NewService() *Service {
     return &Service{}
 }
 
-// Stream implements the SSE endpoint
+// Stream 实现 SSE 端点
 func (s *Service) Stream(ctx context.Context, stream sse.StreamServerStream) error {
-    // Send a message every second
+    // 每秒发送一条消息
     ticker := time.NewTicker(time.Second)
     defer ticker.Stop()
 
     for {
         select {
         case <-ticker.C:
-            // Create and send an event
+            // 创建并发送事件
             event := &sse.Event{
                 Message:   "Hello from server!",
                 Timestamp: time.Now().Unix(),
@@ -137,54 +128,42 @@ func (s *Service) Stream(ctx context.Context, stream sse.StreamServerStream) err
 }
 ```
 
-### Customizing SSE Events
+### 自定义 SSE 事件
 
-The SSE protocol gives us several ways to customize how events are sent. Think of
-these as different channels on our radio broadcast - we can send different types
-of messages, keep track of message order, and control how clients reconnect.
+SSE 协议为我们提供了多种自定义事件发送方式。可以把这些视为广播的不同“频道”——我们可以发送不同类型的消息、维护消息顺序、并控制客户端的重连行为。
 
-Here's how we can customize our events:
+如下自定义事件：
 
 ```go
 ServerSentEvents(func() {
-    SSEEventData("message") // The actual message content
-    SSEEventType("type")    // What kind of message it is
-    SSEEventID("id")        // A unique identifier for the message
-    SSEEventRetry("retry")  // How long to wait before reconnecting
+    SSEEventData("message") // 实际的消息内容
+    SSEEventType("type")    // 消息类型
+    SSEEventID("id")        // 消息的唯一标识符
+    SSEEventRetry("retry")  // 连接丢失后重连的等待时间
 })
 ```
 
-Let's break down what each field does:
+各字段含义：
 
-- **Data Field** (`SSEEventData`): This is the main content of your message. It
-  can be any type of data that can be converted to JSON. If you don't specify
-  this, the entire event object will be sent as the data.
+- **数据字段**（`SSEEventData`）：消息的主体内容。可以是任何可转换为 JSON 的数据类型。如果不指定，则整个事件对象会作为数据发送。
+- **事件类型**（`SSEEventType`）：用于对消息进行分类。例如可区分“notification”（通知）与“alert”（告警）。客户端可以监听特定类型的消息。
+- **事件 ID**（`SSEEventID`）：类似消息编号，帮助客户端跟踪已接收的消息，尤其在连接丢失并恢复时有用。
+- **重试间隔**（`SSEEventRetry`）：指示客户端在连接丢失后尝试重连前等待的时间。
 
-- **Event Type** (`SSEEventType`): This lets you categorize your messages. For
-  example, you might have "notification" messages and "alert" messages. Clients
-  can listen for specific types of messages.
-
-- **Event ID** (`SSEEventID`): This is like a message number. It helps clients
-  keep track of which messages they've received, which is especially useful if the
-  connection is lost and needs to be restored.
-
-- **Retry Interval** (`SSEEventRetry`): This tells clients how long to wait
-  before trying to reconnect if the connection is lost.
-
-Here's a complete example that uses all these features:
+如下为一个使用全部特性的完整示例：
 
 ```go
 var Event = Type("Event", func() {
-    Description("A notification message sent via SSE")
-    Attribute("message", String, "Message body")
-    Attribute("type", String, "Event type (e.g., 'notification', 'alert')")
-    Attribute("id", String, "Unique event identifier")
-    Attribute("retry", Int, "Reconnection delay in milliseconds")
+    Description("通过 SSE 发送的通知消息")
+    Attribute("message", String, "消息体")
+    Attribute("type", String, "事件类型（例如 'notification'、'alert'）")
+    Attribute("id", String, "唯一事件标识符")
+    Attribute("retry", Int, "以毫秒为单位的重连等待时间")
     Required("message", "type", "id")
 })
 
 Method("stream", func() {
-    Description("Stream events using Server-Sent Events")
+    Description("使用服务器发送事件进行流式传输")
     StreamingResult(Event)
     HTTP(func() {
         GET("/events/stream")
@@ -192,13 +171,13 @@ Method("stream", func() {
             SSEEventData("message")
             SSEEventType("type")
             SSEEventID("id")
-            SSEEventRetry("retry") // Only sent if the retry field it not nil
+            SSEEventRetry("retry") // 仅当 retry 字段非空时发送
         })
     })
 })
 ```
 
-When this endpoint sends events, they'll look like this:
+该端点发送的事件示例：
 ```
 event: notification
 id: 123
@@ -209,34 +188,26 @@ id: 124
 data: {"message": "Warning"}
 ```
 
-### Handling Last-Event-Id
+### 处理 Last-Event-Id
 
-One of the most powerful features of SSE is the ability to resume streaming from
-where you left off if the connection is lost. This is handled through the
-`Last-Event-Id` header. Think of it like a bookmark - when a client reconnects,
-it can tell the server "I last received message number X, please send me
-everything after that."
+SSE 的一个强大特性是在连接丢失时能从上次中断的位置恢复流式传输。这由 `Last-Event-Id` 头实现。可将其视为“书签”——当客户端重连时，它可以告诉服务器“我上次接收到的消息编号是 X，请从之后的消息继续发送”。
 
-#### Why Use Last-Event-Id?
+#### 为什么使用 Last-Event-Id？
 
-The `Last-Event-Id` feature is crucial for building reliable real-time
-applications. It ensures that clients don't miss any messages when their
-connection drops, and it helps maintain the correct order of messages. This is
-especially important for applications where missing or out-of-order messages
-could cause problems.
+`Last-Event-Id` 对构建可靠的实时应用至关重要。它确保客户端在连接中断时不会错过任何消息，并帮助维护消息的正确顺序。这对于那些丢失或错序消息会导致问题的应用尤为重要。
 
-#### Implementation
+#### 实现
 
-Let's implement `Last-Event-Id` support in our service:
+让我们在服务中实现对 `Last-Event-Id` 的支持：
 
-1. First, we modify our design to accept the last event ID:
+1. 首先，在设计中接收最后一个事件 ID：
 
 ```go
 Method("stream", func() {
-    Description("Stream events using Server-Sent Events")
+    Description("使用服务器发送事件进行流式传输")
     Payload(func() {
-        Attribute("startID", String, "ID of the last event received", func() {
-            Description("Used to resume streaming from a specific event")
+        Attribute("startID", String, "最后接收事件的 ID", func() {
+            Description("用于从特定事件恢复流式传输")
             Example("123")
         })
     })
@@ -244,22 +215,22 @@ Method("stream", func() {
     HTTP(func() {
         GET("/events/stream")
         ServerSentEvents(func() {
-            SSERequestID("startID") // Maps the Last-Event-Id header to startID
+            SSERequestID("startID") // 将 Last-Event-Id 头映射到 startID
         })
     })
 })
 ```
 
-2. Then, we implement the server logic to handle resuming from a specific event:
+2. 然后，在服务器逻辑中处理从特定事件恢复：
 
 ```go
 func (s *svc) Stream(ctx context.Context, p *svc.StreamPayload, stream svc.StreamServerStream) error {
-    // Get the last event ID from the payload
+    // 从载荷中获取最后事件 ID
     lastID := p.StartID
 
-    // If we have a last ID, skip events until we find it
+    // 如果存在最后 ID，则跳过事件直到找到它
     if lastID != "" {
-        // Skip events until we find the last received event
+        // 跳过事件直到找到最后接收的事件
         for ev := range s.events {
             if ev.ID == lastID {
                 break
@@ -267,7 +238,7 @@ func (s *svc) Stream(ctx context.Context, p *svc.StreamPayload, stream svc.Strea
         }
     }
 
-    // Start streaming new events
+    // 开始流式发送新事件
     for ev := range s.events {
         if err := stream.Send(ev); err != nil {
             return err
@@ -277,7 +248,7 @@ func (s *svc) Stream(ctx context.Context, p *svc.StreamPayload, stream svc.Strea
 }
 ```
 
-3. Finally, we implement a client that can handle reconnection:
+3. 最后，实现一个可处理重连的客户端：
 
 ```javascript
 class EventSourceWithRetry extends EventSource {
@@ -285,7 +256,7 @@ class EventSourceWithRetry extends EventSource {
         super(url);
         this.lastEventId = null;
         
-        // Store the last event ID
+        // 存储最后事件 ID
         this.addEventListener('message', (event) => {
             if (event.lastEventId) {
                 this.lastEventId = event.lastEventId;
@@ -293,10 +264,10 @@ class EventSourceWithRetry extends EventSource {
         });
     }
 
-    // Override the default reconnection behavior
+    // 覆盖默认的重连行为
     reconnect() {
         if (this.lastEventId) {
-            // Create new EventSource with Last-Event-Id header
+            // 使用 Last-Event-Id 头创建新的 EventSource
             const headers = new Headers();
             headers.append('Last-Event-Id', this.lastEventId);
             return new EventSourceWithRetry(this.url, { headers });
@@ -305,38 +276,24 @@ class EventSourceWithRetry extends EventSource {
     }
 }
 
-// Usage
+// 用法
 const eventSource = new EventSourceWithRetry('/events/stream');
 ```
 
-#### Best Practices
+#### 最佳实践
 
-When implementing `Last-Event-Id`, keep these points in mind:
+实现 `Last-Event-Id` 时，请注意：
 
-1. **Event ID Format**: Choose a format that makes sense for your application.
-   Sequential numbers are good for maintaining order, while UUIDs are better for
-   uniqueness. Make sure your IDs contain enough information to uniquely identify
-   events.
+1. **事件 ID 格式**：选择适合你应用的格式。顺序编号便于维护顺序；UUID 更适合保证唯一性。确保 ID 有足够信息以唯一标识事件。
+2. **存储考虑**：决定需要保留历史事件的时长。可以将最后事件 ID 存在浏览器 localStorage 中以在页面刷新后仍可恢复；也可实现旧事件 ID 的清理机制。
+3. **错误处理**：为最后事件 ID 不再可用的情况做规划。可能服务器清理了旧事件，或 ID 无效。为这些情况准备回退机制。
+4. **性能**：注意事件的存储与查找方式。可采用滑动窗口策略，仅在内存中保留最近的事件。
 
-2. **Storage Considerations**: Decide how long you want to keep track of old
-   events. You might want to store the last event ID in the browser's localStorage
-   to survive page refreshes, or you might want to implement a cleanup mechanism
-   for old event IDs.
+## 客户端使用
 
-3. **Error Handling**: Plan for cases where the last event ID is no longer
-   available. Maybe the server has cleaned up old events, or maybe the ID is
-   invalid. Have a fallback mechanism for these situations.
+### 浏览器客户端
 
-4. **Performance**: Be mindful of how you store and look up events. You might
-   want to use a sliding window approach, where you only keep the most recent
-   events in memory.
-
-## Client Usage
-
-### Browser Client
-
-Connecting to an SSE endpoint is straightforward. Here's a basic example using the
-browser's `EventSource` API:
+连接到 SSE 端点非常简单。以下是使用浏览器 `EventSource` API 的基本示例：
 
 ```javascript
 const eventSource = new EventSource('/events/stream');
@@ -352,9 +309,9 @@ eventSource.onerror = (error) => {
 };
 ```
 
-### Go Client
+### Go 客户端
 
-Goa generates client code that you can use in your Go applications:
+Goa 会生成可在你的 Go 应用中使用的客户端代码：
 
 ```go
 package main
@@ -368,19 +325,19 @@ import (
 )
 
 func main() {
-    // Create a new client
+    // 创建客户端
     c := client.NewClient("http://localhost:8080")
 
-    // Create a context
+    // 创建上下文
     ctx := context.Background()
 
-    // Start streaming
+    // 开始流式接收
     stream, err := c.Stream(ctx)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Receive events
+    // 接收事件
     for {
         event, err := stream.Recv()
         if err != nil {
@@ -391,27 +348,27 @@ func main() {
 }
 ```
 
-## Testing
+## 测试
 
-### Server Tests
+### 服务器端测试
 
-Here's how to test your SSE endpoint:
+如下测试你的 SSE 端点：
 
 ```go
 func TestStream(t *testing.T) {
-    // Create a new service
+    // 创建服务
     svc := NewService()
 
-    // Create a test context
+    // 创建测试上下文
     ctx := context.Background()
 
-    // Create a test stream
+    // 创建测试流
     stream := &TestStream{
         events: make(chan *sse.Event),
         errors: make(chan error),
     }
 
-    // Start streaming in a goroutine
+    // 在 goroutine 中启动流式
     go func() {
         err := svc.Stream(ctx, stream)
         if err != nil {
@@ -419,7 +376,7 @@ func TestStream(t *testing.T) {
         }
     }()
 
-    // Receive events
+    // 接收事件
     for i := 0; i < 5; i++ {
         select {
         case event := <-stream.events:
@@ -451,20 +408,20 @@ func (s *TestStream) Close() error {
 }
 ```
 
-### Client Tests
+### 客户端测试
 
-For client-side testing, you can use a mock server:
+在客户端侧，可以使用模拟服务器：
 
 ```go
 func TestClient(t *testing.T) {
-    // Create a test server
+    // 创建测试服务器
     server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Set SSE headers
+        // 设置 SSE 响应头
         w.Header().Set("Content-Type", "text/event-stream")
         w.Header().Set("Cache-Control", "no-cache")
         w.Header().Set("Connection", "keep-alive")
 
-        // Send test events
+        // 发送测试事件
         for i := 0; i < 5; i++ {
             fmt.Fprintf(w, "data: {\"message\":\"test %d\"}\n\n", i)
             w.(http.Flusher).Flush()
@@ -473,16 +430,16 @@ func TestClient(t *testing.T) {
     }))
     defer server.Close()
 
-    // Create a client
+    // 创建客户端
     c := client.NewClient(server.URL)
 
-    // Start streaming
+    // 开始流式
     stream, err := c.Stream(context.Background())
     if err != nil {
         t.Fatal(err)
     }
 
-    // Receive events
+    // 接收事件
     for i := 0; i < 5; i++ {
         event, err := stream.Recv()
         if err != nil {
@@ -495,18 +452,18 @@ func TestClient(t *testing.T) {
 }
 ```
 
-## Limitations
+## 局限性
 
-While SSE is powerful, it does have some limitations to be aware of:
+尽管 SSE 很强大，但仍需注意以下局限：
 
-- It's a one-way street - servers can send to clients, but clients can't send back
-- It's limited to text-based data (though you can send JSON)
-- Browsers limit the number of concurrent SSE connections
-- While browsers handle reconnection automatically, custom clients need to implement their own reconnection logic
+- 单向通信——服务器可以向客户端发送，客户端无法回发
+- 仅限文本数据（可发送 JSON）
+- 浏览器会限制并发 SSE 连接数
+- 浏览器会自动处理重连，但自定义客户端需要自行实现重连逻辑
 
-## See Also
+## 参阅
 
-- [Server-Sent Events Specification](https://html.spec.whatwg.org/multipage/server-sent-events.html)
-- [Example Implementation](https://github.com/goadesign/examples/tree/master/sse)
-- [Goa Design Documentation](/docs/4-concepts/design)
-- [Goa Streaming Tutorial](/docs/3-tutorials/4-streaming) 
+- [服务器发送事件规范](https://html.spec.whatwg.org/multipage/server-sent-events.html)
+- [示例实现](https://github.com/goadesign/examples/tree/master/sse)
+- [Goa 设计文档](/docs/4-concepts/design)
+- [Goa 流式教程](/docs/3-tutorials/4-streaming) 

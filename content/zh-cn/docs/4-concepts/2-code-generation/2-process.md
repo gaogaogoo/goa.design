@@ -1,73 +1,63 @@
 ---
-title: "Generation Process"
-linkTitle: "Generation Process"
+title: "生成流程"
+linkTitle: "生成流程"
 weight: 2
-description: "Understand how Goa transforms your design into code, including the generation pipeline, expression evaluation, and output structure."
+description: "了解 Goa 如何将你的设计转换为代码，包括生成流水线、表达式求值与输出结构。"
 ---
 
-## Generation Pipeline
+## 生成流水线（Generation Pipeline）
 
-When you run `goa gen`, Goa follows a systematic process to transform your
-design into working code:
+运行 `goa gen` 时，Goa 会按系统化流程将你的设计转换为可运行的代码：
 
-### 1. Bootstrap Phase
+### 1. 引导阶段（Bootstrap Phase）
 
-Goa first creates and runs a temporary program:
-During this phase, Goa creates a temporary `main.go` program that:
+Goa 首先创建并运行一个临时程序：
+在该阶段，Goa 会创建一个临时的 `main.go` 程序，负责：
 
-1. Imports the necessary Goa packages for code generation and evaluation
-2. Imports your design package
-3. Runs the DSL evaluation to process your design
-4. Triggers the code generation process
+1. 引入用于代码生成与求值的 Goa 包
+2. 引入你的设计包
+3. 运行 DSL 以评估你的设计
+4. 触发代码生成流程
 
-This temporary program serves as the entry point for transforming your design
-into code. It's automatically created and removed during the generation process,
-so you never need to manage it directly.
+该临时程序是将设计转化为代码的入口。在生成过程中会自动创建与删除，你无需手动管理。
 
-### 2. Design Evaluation
+### 2. 设计评估（Design Evaluation）
 
-During this phase, Goa loads and evaluates your design package:
+此阶段 Goa 会加载并评估你的设计包：
 
-1. DSL functions are executed to create expression objects that represent your API design
-2. These expressions are combined into a complete model of your API's structure and behavior
-3. The system analyzes and establishes relationships between different expressions
-4. All design rules and constraints are carefully validated to ensure correctness
+1. 执行 DSL 函数以创建表示 API 设计的表达式对象
+2. 将这些表达式组合为完整的 API 结构与行为模型
+3. 系统分析并建立各表达式之间的关系
+4. 严格校验所有设计规则与约束以确保正确性
 
-This evaluation phase is critical as it transforms your declarative design into
-a structured model that can be used for code generation.
+评估阶段至关重要，它将你的声明式设计转换为可用于代码生成的结构化模型。
 
-### 3. Code Generation
+### 3. 代码生成（Code Generation）
 
-Once the expressions have been validated, they are passed to Goa's code
-generators. The generators use these expressions as input data to render various
-code templates. They generate transport-specific code for HTTP and gRPC, create
-all necessary supporting files, and write the complete output to the `gen/`
-directory. This generation step produces all the code needed to run your service
-while maintaining consistency across the codebase.
+表达式通过校验后会传递给 Goa 的代码生成器。生成器以表达式为输入渲染各类代码模板，生成面向 HTTP 与 gRPC 的传输层代码、创建所有必要的支撑文件，并将完整输出写入 `gen/` 目录。该步骤会生成运行服务所需的全部代码，同时确保代码库的一致性。
 
-## Generated Structure
+## 生成结构（Generated Structure）
 
-A typical generated project structure:
+典型的生成项目结构如下：
 
 ```
 myservice/
-├── cmd/             # Generated example commands
+├── cmd/             # 生成的示例命令
 │   └── calc/
 │       ├── grpc.go
 │       └── http.go
-├── design/          # Your design files
+├── design/          # 你的设计文件
 │   └── design.go
-├── gen/            # Generated code
-│   ├── calc/       # Service-specific code
+├── gen/            # 生成代码
+│   ├── calc/       # 服务相关代码
 │   │   ├── client/
 │   │   ├── endpoints/
 │   │   └── service/
-│   └── http/       # Transport layer
+│   └── http/       # 传输层
 │       ├── client/
 │       └── server/
-└── myservice.go    # Generated service implementation stub
+└── myservice.go    # 生成的服务实现桩
 ```
 
-Consult the
-[Generated Code](/4-concepts/2-code-generation/3-generated-code) section
-for more details on the generated code.
+更多关于生成代码的细节，参见
+[生成的代码](/4-concepts/2-code-generation/3-generated-code) 部分。

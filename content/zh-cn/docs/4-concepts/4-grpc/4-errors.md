@@ -1,26 +1,26 @@
 ---
-title: "Error Handling"
-linkTitle: "Error Handling"
+title: "错误处理"
+linkTitle: "错误处理"
 weight: 4
-description: "Learn how to handle errors in gRPC services with Goa, including status codes, error definitions, and error propagation"
+description: "学习如何在 Goa 的 gRPC 服务中进行错误处理，包括状态码、错误定义与错误传播"
 ---
 
-This guide explains how to handle errors in gRPC services using Goa.
+本文介绍如何在使用 Goa 的 gRPC 服务中处理错误。
 
-## Error Types
+## 错误类型
 
-### Status Codes
+### 状态码（Status Codes）
 
-gRPC uses status codes to indicate errors. Goa provides built-in mappings to these codes:
+gRPC 使用状态码来表示错误。Goa 提供了这些状态码的内置映射：
 
 ```go
 Method("divide", func() {
-    // Define possible errors
+    // 定义可能出现的错误
     Error("division_by_zero")
     Error("invalid_input")
 
     GRPC(func() {
-        // Map errors to gRPC status codes
+        // 将错误映射到 gRPC 状态码
         Response(CodeOK)
         Response("division_by_zero", CodeInvalidArgument)
         Response("invalid_input", CodeInvalidArgument)
@@ -28,36 +28,36 @@ Method("divide", func() {
 })
 ```
 
-Common status code mappings:
+常见状态码映射：
 
-| Goa Error | gRPC Status Code | Use Case |
-|-----------|-----------------|-----------|
-| `not_found` | `CodeNotFound` | Resource doesn't exist |
-| `invalid_argument` | `CodeInvalidArgument` | Invalid input |
-| `internal_error` | `CodeInternal` | Server error |
-| `unauthenticated` | `CodeUnauthenticated` | Missing/invalid credentials |
-| `permission_denied` | `CodePermissionDenied` | Insufficient permissions |
+| Goa Error | gRPC Status Code | 使用场景 |
+|-----------|------------------|----------|
+| `not_found` | `CodeNotFound` | 资源不存在 |
+| `invalid_argument` | `CodeInvalidArgument` | 输入无效 |
+| `internal_error` | `CodeInternal` | 服务器内部错误 |
+| `unauthenticated` | `CodeUnauthenticated` | 凭据缺失/无效 |
+| `permission_denied` | `CodePermissionDenied` | 权限不足 |
 
-## Error Definitions
+## 错误定义
 
-### Basic Error Definition
+### 基础错误定义
 
-Define errors at the service or method level:
+可在服务或方法级别定义错误：
 
 ```go
 var _ = Service("users", func() {
-    // Service-level errors
+    // 服务级错误
     Error("not_found", func() {
-        Description("User not found")
+        Description("用户未找到")
     })
     Error("invalid_input")
 
     Method("getUser", func() {
-        // Method-specific error
+        // 方法特定错误
         Error("profile_incomplete")
 
         GRPC(func() {
-            // Map all possible errors
+            // 映射所有可能错误
             Response(CodeOK)
             Response("not_found", CodeNotFound)
             Response("invalid_input", CodeInvalidArgument)
@@ -67,21 +67,21 @@ var _ = Service("users", func() {
 })
 ```
 
-## Error Implementation
+## 错误实现
 
-### Returning Errors
+### 返回错误
 
-When implementing your service methods, you'll want to handle various types of errors. For input validation, it's best to define these constraints directly in your Goa DSL:
+在实现服务方法时，需要处理多种类型的错误。对于输入校验，最好直接在 Goa DSL 中定义这些约束：
 
 ```go
 var _ = Service("users", func() {
     Method("createUser", func() {
         Payload(func() {
-            Field(1, "name", String, "User's full name")
-            Field(2, "age", Int, "User's age")
-            Field(3, "email", String, "User's email")
+            Field(1, "name", String, "用户全名")
+            Field(2, "age", Int, "用户年龄")
+            Field(3, "email", String, "用户邮箱")
             
-            // Define validation rules in the DSL
+            // 在 DSL 中定义校验规则
             Required("name", "age", "email")
             Minimum("age", 0)
             Maximum("age", 150)
@@ -100,22 +100,22 @@ var _ = Service("users", func() {
 })
 ```
 
-For runtime errors that can't be validated through the DSL (like database conflicts, external service failures, or business logic violations), use the generated error constructors:
+对于无法通过 DSL 校验的运行时错误（如数据库冲突、外部服务失败或业务逻辑违规），使用生成的错误构造函数：
 
 ```go
 func (s *users) CreateUser(ctx context.Context, p *users.CreateUserPayload) (*users.User, error) {
-    // Check if email already exists
+    // 检查邮箱是否已存在
     exists, err := s.db.EmailExists(ctx, p.Email)
     if err != nil {
-        // Wrap database errors
+        // 包装数据库错误
         return nil, users.MakeDatabaseError(fmt.Errorf("failed to check email: %w", err))
     }
     if exists {
-        // Return business logic error
+        // 返回业务逻辑错误
         return nil, users.MakeDuplicateEmail(fmt.Sprintf("email %s is already registered", p.Email))
     }
     
-    // Create user in database
+    // 在数据库中创建用户
     user, err := s.db.CreateUser(ctx, p)
     if err != nil {
         return nil, users.MakeDatabaseError(fmt.Errorf("failed to create user: %w", err))
@@ -125,9 +125,9 @@ func (s *users) CreateUser(ctx context.Context, p *users.CreateUserPayload) (*us
 }
 ```
 
-### Error Handling in Streaming
+### 流式中的错误处理
 
-When working with streaming gRPC methods, error handling becomes more complex as you need to handle both stream-related errors and business logic errors. Here's an example showing how to handle different types of errors in a streaming service method:
+在处理 gRPC 流式方法时，错误处理更为复杂，需要同时处理与流相关的错误和业务错误。以下示例展示如何在流式服务方法中处理不同类型的错误：
 
 ```go
 func (s *service) StreamData(stream service.StreamDataServerStream) error {
@@ -150,11 +150,11 @@ func (s *service) StreamData(stream service.StreamDataServerStream) error {
 }
 ```
 
-## Error Handling Patterns
+## 错误处理模式
 
-### Wrapping Errors
+### 错误包装（Wrapping Errors）
 
-When dealing with errors from external packages or lower-level components, it's important to provide context while maintaining the appropriate gRPC status codes. Here's how to wrap errors while preserving the error chain:
+当处理来自外部包或底层组件的错误时，需在保留适当的 gRPC 状态码的同时提供上下文。以下展示如何在保留错误链的同时进行错误包装：
 
 ```go
 func (s *service) ProcessData(ctx context.Context, p *service.ProcessDataPayload) (*service.Result, error) {
@@ -173,9 +173,9 @@ func (s *service) ProcessData(ctx context.Context, p *service.ProcessDataPayload
 }
 ```
 
-### Error Recovery
+### 错误恢复（Error Recovery）
 
-In long-running operations or batch processing, it's often desirable to implement error recovery mechanisms to handle transient failures. Here's an example showing how to implement retry logic and batch processing with error tracking:
+在长时间运行或批处理操作中，通常需要实现错误恢复机制以处理瞬时失败。以下示例展示如何实现带重试逻辑与错误统计的批处理：
 
 ```go
 func (s *service) ProcessBatch(stream service.ProcessBatchServerStream) error {
@@ -184,7 +184,7 @@ func (s *service) ProcessBatch(stream service.ProcessBatchServerStream) error {
     for {
         payload, err := stream.Recv()
         if err == io.EOF {
-            // Send final status
+            // 发送最终状态
             return stream.SendAndClose(&service.BatchResult{
                 Processed: processed,
                 Failed:    failed,
@@ -194,10 +194,10 @@ func (s *service) ProcessBatch(stream service.ProcessBatchServerStream) error {
             return service.MakeStreamInterrupted(err)
         }
 
-        // Process with error recovery
+        // 带错误恢复的处理
         if err := s.processWithRetry(payload); err != nil {
             failed++
-            // Log error but continue processing
+            // 记录错误但继续处理
             log.Printf("Failed to process item: %v", err)
             continue
         }
@@ -212,7 +212,7 @@ func (s *service) processWithRetry(payload *service.Payload) error {
         if err == nil {
             return nil
         }
-        // Only retry on transient errors
+        // 仅对瞬时错误进行重试
         if !isTransientError(err) {
             return err
         }
@@ -222,26 +222,24 @@ func (s *service) processWithRetry(payload *service.Payload) error {
 }
 ```
 
-## Best Practices
+## 最佳实践
 
-### Error Design Guidelines
+### 错误设计指南
 
-1. **Define API-Level Common Errors**
+1. 定义 API 级通用错误
    
-   Define common errors at the API level to ensure consistency across all
-   services and enable reuse. This reduces duplication and ensures uniform error
-   handling:
+   在 API 层定义通用错误以确保跨服务的一致性并实现复用，减少重复并统一错误处理：
 
    ```go
    var _ = API("myapi", func() {
-       // Common errors shared across the API
+       // API 共享的通用错误
        Error("unauthorized", func() {
-           Description("Request requires authentication")
+           Description("请求需要认证")
        })
-       Error("not_found")  // Uses default ErrorResult type
-       Error("validation_error", ValidationError, "Validation failed")
+       Error("not_found")  // 使用默认 ErrorResult 类型
+       Error("validation_error", ValidationError, "校验失败")
 
-       // Define common HTTP mappings
+       // 定义通用的 HTTP 映射
        HTTP(func() {
            Response("unauthorized", StatusUnauthorized)
            Response("not_found", StatusNotFound)
@@ -250,9 +248,9 @@ func (s *service) processWithRetry(payload *service.Payload) error {
    })
    ```
 
-2. **Map Errors to Appropriate Status Codes**
+2. 将错误映射到恰当的状态码
    
-   Choose appropriate gRPC status codes based on the error's semantic meaning, not just its source:
+   基于错误的语义意义选择合适的 gRPC 状态码，而不只是其来源：
 
    ```go
    var _ = Service("users", func() {
@@ -262,24 +260,24 @@ func (s *service) processWithRetry(payload *service.Payload) error {
            Error("database_error")
 
            GRPC(func() {
-               // Map to semantic gRPC codes
+               // 映射到语义化的 gRPC 状态码
                Response("invalid_input", CodeInvalidArgument)
                Response("email_taken", CodeAlreadyExists)
-               Response("database_error", CodeInternal)  // Hide implementation details
+               Response("database_error", CodeInternal)  // 隐藏实现细节
            })
        })
    })
    ```
 
-3. **Document Error Conditions**
+3. 文档化错误条件
    
-   Provide clear descriptions and examples for each error type to help API consumers handle errors appropriately:
+   为每种错误类型提供清晰的描述与示例，帮助 API 使用者正确处理错误：
 
    ```go
    var _ = Service("payment", func() {
        Method("processPayment", func() {
            Error("insufficient_funds", func() {
-               Description("Account has insufficient funds for the transaction")
+               Description("账户余额不足，无法完成交易")
                Example(func() {
                    Value(Val{
                        "message": "Insufficient funds",
@@ -290,36 +288,31 @@ func (s *service) processWithRetry(payload *service.Payload) error {
            })
            
            Error("card_declined", func() {
-               Description("Payment card was declined by the provider")
-               Meta("docs:example", "Card expired or invalid")
+               Description("支付卡被提供方拒绝")
+               Meta("docs:example", "卡片过期或无效")
            })
        })
    })
    ```
 
-4. **Error Hierarchy and Inheritance**
+4. 错误层级与继承
    
-   Structure errors hierarchically to allow for both general and specific error handling:
+   以层级化结构组织错误，便于同时进行通用与特定的错误处理：
 
    ```go
    var _ = Service("orders", func() {
-       // Service-level error that applies to all methods
+       // 适用于所有方法的服务级错误
        Error("database_error")
 
        Method("placeOrder", func() {
-           // Method-specific errors
+           // 方法级特定错误
            Error("inventory_unavailable")
            Error("payment_failed")
            
-           // Can still use service-level errors
-           // No need to redefine database_error
+           // 仍可使用服务级错误
+           // 无需重新定义 database_error
        })
    })
    ```
 
-Following these best practices helps you maintain consistency across your API
-while providing clear error information to clients. It enables effective error
-handling and keeps your API documentation clear and useful. Additionally, it
-allows you to hide implementation details while exposing meaningful error
-information to consumers. The ability to reuse errors across methods and
-services also helps reduce code duplication in your API design.
+遵循以上最佳实践可在整个 API 中保持一致性，同时为客户端提供清晰的错误信息。这有助于实现高效的错误处理并保持文档清晰易用；此外还能在隐藏实现细节的同时向使用者暴露有意义的错误信息。跨方法与服务复用错误也能有效减少 API 设计中的重复。

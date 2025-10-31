@@ -1,42 +1,35 @@
 ---
-title: Best Practices
-linkTitle: Best Practices
+title: 最佳实践
+linkTitle: 最佳实践
 weight: 7
-description: "Essential guidelines and recommended practices for implementing robust error handling in your Goa services, including naming conventions and testing strategies."
+description: "在 Goa 服务中实现健壮错误处理的关键指南与推荐实践，包括命名约定与测试策略。"
 ---
 
-Implementing robust error handling is essential for building reliable and
-maintainable APIs. Here are some best practices to follow when defining and
-managing errors in your Goa-based services:
+要构建可靠、可维护的 API，健壮的错误处理至关重要。以下是在基于 Goa 的服务中定义与管理错误时应遵循的最佳实践：
 
-## 1. Consistent Error Naming
+## 1. 保持一致的错误命名
 
-Descriptive Names: Use clear and descriptive names for your errors that
-accurately reflect the issue. This makes it easier for developers to understand
-and handle errors appropriately.
+描述性命名：为错误使用清晰且具描述性的名称，准确反映问题，从而让开发者更容易理解并正确处理错误。
 
-Good Example:
+优秀示例：
 
 ```go
 Error("DivByZero", func() { Description("DivByZero is returned when the divisor is zero.") })
 ```
 
-Bad Example:
+不佳示例：
 
 ```go
 Error("Error1", func() { Description("An unspecified error occurred.") })
 ```
 
-## 2. Prefer ErrorResult Over Custom Types
+## 2. 优先使用 ErrorResult 而非自定义类型
 
-**Simplicity:** Use the default ErrorResult type for most errors to maintain
-simplicity and consistency across your service.
+简洁性：对于大多数错误，使用默认的 ErrorResult 类型以保持服务内的一致性与简洁性。
 
-**When to Use Custom Types:** Reserve custom error types for scenarios where
-you need to include additional contextual information beyond what ErrorResult
-provides.
+何时使用自定义类型：当你需要包含超出 ErrorResult 所提供范围的额外上下文信息时，再使用自定义错误类型。
 
-Using ErrorResult:
+使用 ErrorResult：
 
 ```go
 var _ = Service("calculator", func() {
@@ -44,7 +37,7 @@ var _ = Service("calculator", func() {
 })
 ```
 
-or:
+或：
 
 ```go
 var _ = Service("calculator", func() {
@@ -52,7 +45,7 @@ var _ = Service("calculator", func() {
 })
 ```
 
-Using Custom Types:
+使用自定义类型：
 
 ```go
 var _ = Service("calculator", func() {
@@ -60,13 +53,11 @@ var _ = Service("calculator", func() {
 })
 ```
 
-## 3. Utilize DSL Features
+## 3. 充分利用 DSL 功能
 
-**Error Flags:** Leverage DSL features like `Temporary()`, `Timeout()`, and
-`Fault()` to provide additional metadata about errors. This enriches the error
-information and aids in better client-side handling.
+错误标识：使用 `Temporary()`、`Timeout()` 与 `Fault()` 等 DSL 功能为错误提供额外元数据，丰富错误信息，便于客户端更好处理。
 
-Example:
+示例：
 
 ```go
 Error("ServiceUnavailable", func() { 
@@ -75,34 +66,27 @@ Error("ServiceUnavailable", func() {
 })
 ```
 
-Descriptions: Always provide meaningful descriptions for your errors to aid in
-documentation and client understanding.
+描述：始终为错误提供有意义的描述，有助于文档与客户端理解。
 
-## 4. Document Errors Thoroughly
+## 4. 详尽记录错误
 
-**Clear Descriptions:** Ensure that each error has a clear and concise
-description. This helps clients understand the context and reason for the error.
+清晰描述：确保每个错误都有清晰、简洁的描述，帮助客户端理解错误的上下文与原因。
 
-**Generated Documentation:** Take advantage of Goa's ability to generate
-documentation from your DSL definitions. Well-documented errors enhance the
-developer experience for API consumers.
+生成文档：利用 Goa 能从 DSL 定义生成文档的能力。良好的错误文档能提升 API 使用者的开发体验。
 
-Example:
+示例：
 
 ```go
 Error("AuthenticationFailed", ErrorResult, Description("AuthenticationFailed is returned when user credentials are invalid."))
 ```
 
-## 5. Implement Proper Error Mapping
+## 5. 正确实现错误映射
 
-**Transport Consistency:** Ensure that errors are consistently mapped to
-appropriate transport-specific status codes (HTTP, gRPC) to provide meaningful
-responses to clients.
+传输一致性：确保错误被一致地映射到合适的传输层状态码（HTTP、gRPC），为客户端提供有意义的响应。
 
-**Automate Mappings:** Use Goa's DSL to define these mappings, reducing the risk
-of inconsistencies and boilerplate code.
+自动化映射：使用 Goa 的 DSL 定义这些映射，降低不一致与样板代码的风险。
 
-Example: 
+示例：
 
 ```go
 var _ = Service("auth", func() {
@@ -120,16 +104,13 @@ var _ = Service("auth", func() {
 })
 ```
 
-## 6. Test Error Handling
+## 6. 测试错误处理
 
-**Automated Tests:** Write automated tests to ensure that errors are correctly
-defined, mapped, and handled. This helps catch issues early in the development
-process.
+自动化测试：编写自动化测试以确保错误被正确定义、映射与处理，有助于在开发早期发现问题。
 
-**Client Simulations:** Simulate client interactions to verify that errors are
-communicated as expected across different transports.
+客户端模拟：模拟客户端交互以验证错误在不同传输层上的沟通是否符合预期。
 
-Example Test Case:
+示例测试用例：
 
 ```go
 func TestDivideByZero(t *testing.T) {
@@ -144,10 +125,6 @@ func TestDivideByZero(t *testing.T) {
 }
 ```
 
-## Conclusion
+## 结论
 
-Adhering to these best practices ensures that your Goa-based services have a
-robust and consistent error handling mechanism. By leveraging Goa's DSL
-features, maintaining clear and descriptive error definitions, and implementing
-thorough testing, you can build APIs that are both developer-friendly and
-reliable for end-users.
+遵循以上最佳实践，可确保你的 Goa 服务拥有健壮且一致的错误处理机制。通过利用 Goa 的 DSL 功能、保持清晰且具描述性的错误定义，以及实施完善的测试，你可以构建既对开发者友好又对终端用户可靠的 API。

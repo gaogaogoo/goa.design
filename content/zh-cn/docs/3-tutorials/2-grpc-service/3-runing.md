@@ -1,110 +1,88 @@
 ---
-title: "Running the Service"
-linkTitle: "Running"
+title: "运行服务"
+linkTitle: "运行"
 weight: 3
-description: "Learn to run and test your Goa gRPC service using various tools like gRPC CLI, gRPCurl, and custom Go clients, with practical examples and common usage patterns."
+description: "使用 gRPC CLI、grpcurl 或自定义 Go 客户端运行并测试 Goa gRPC 服务，含常用示例与实践。"
 ---
 
-After designing and implementing your gRPC-based Goa service, you'll want to
-**run** it locally and confirm it works as expected. In this tutorial, we'll:
+完成设计与实现后，下一步是在本地将服务运行起来并验证行为：
 
-1. **Launch** the gRPC server.
-2. **Test** the service using gRPC tools.
-3. **Review** common next steps for real-world usage.
+1. 启动 gRPC 服务器
+2. 使用 gRPC 工具进行调用测试
+3. 总结真实使用中的常见后续步骤
 
-## 1. Launch the Server
+## 1. 启动服务器
 
-From your project's root (e.g., `grpcgreeter/`), run the `main.go` you created in
-the `cmd/greeter/` folder:
+在项目根目录（如 `grpcgreeter/`）运行 `cmd/greeter/` 下的入口：
 
 ```bash
 go run grpcgreeter/cmd/greeter
 ```
 
-If everything is set up correctly, the service **listens** on port `8090` (as
-specified in `main.go`).
-
-You should see a log message like:
+正常启动后，服务会监听 `:8090`（由 `main.go` 指定）。您应看到类似日志：
 
 ```
 gRPC greeter service listening on :8090
 ```
 
-This indicates the service is active and **ready** to receive gRPC requests.
+表示服务已就绪，可接收 gRPC 请求。
 
-## 2. Test the Service
+## 2. 测试服务
 
 ### gRPC CLI
 
-If you have the official gRPC CLI tool installed (`brew install grpc` on MacOS),
-you can simply test your service with:
+若已安装官方 gRPC CLI（macOS 可 `brew install grpc`），可以直接调用：
 
 ```bash
 grpc_cli call localhost:8090 SayHello "name: 'Alice'"
 ```
 
-This sends an RPC to the `SayHello` method with the `name` field set to `"Alice"`.
-This works because the service is configured to enable server reflection.
+由于启用了 server reflection，该调用可成功解析服务与方法。
 
-### gRPCurl
+### grpcurl
 
-[gRPCurl](https://github.com/fullstorydev/grpcurl) (`brew install grpcurl` on
-MacOS) is another popular tool that can be used to test gRPC services:
+[gRPCurl](https://github.com/fullstorydev/grpcurl)（macOS 可 `brew install grpcurl`）也是常用测试工具：
 
 ```bash
 grpcurl -plaintext -d '{"name": "Alice"}' localhost:8090 greeter.Greeter/SayHello
 ```
 
-### Custom Client
+### 自定义客户端
 
-You can also write a **small Go client** using the generated client code. For
-instance:
+也可使用生成的客户端代码编写一个小型 Go 客户端：
 
 ```go
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
+    "context"
+    "fmt"
+    "log"
 
-	gengreeter "grpcgreeter/gen/greeter"
-	genclient "grpcgreeter/gen/grpc/greeter/client"
+    gengreeter "grpcgreeter/gen/greeter"
+    genclient "grpcgreeter/gen/grpc/greeter/client"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+    "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	// Set up a connection to the server
-	conn, err := grpc.Dial("localhost:8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
-	}
-	defer conn.Close()
+    conn, err := grpc.Dial("localhost:8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
+    if err != nil { log.Fatalf("Failed to connect: %v", err) }
+    defer conn.Close()
 
-	// Create a gRPC client using Goa's generated code
-	grpcc := genclient.NewClient(conn)
-	c := gengreeter.NewClient(grpcc.SayHello())
+    grpcc := genclient.NewClient(conn)
+    c := gengreeter.NewClient(grpcc.SayHello())
 
-	// Make the RPC call
-	res, err := c.SayHello(context.Background(), &gengreeter.SayHelloPayload{"Alice"})
-	if err != nil {
-		log.Fatalf("Error calling SayHello: %v", err)
-	}
+    res, err := c.SayHello(context.Background(), &gengreeter.SayHelloPayload{"Alice"})
+    if err != nil { log.Fatalf("Error calling SayHello: %v", err) }
 
-	// Print the response
-	fmt.Printf("Server response: %s\n", res.Greeting)
+    fmt.Printf("Server response: %s\n", res.Greeting)
 }
 ```
 
-Compile and run this client, and it should print the greeting returned by your
-service.
+编译并运行后，将打印服务返回的问候语。
 
 ---
 
-That's it! You now have a **running gRPC service** built with Goa, tested either
-via the official gRPC CLI or a custom Go client. Continue exploring the DSL to
-add more features—like **streaming**, **authentication interceptors**, or
-**automatic code generation** for multiple environments. You're well on your
-way to a **robust** Go-based microservices architecture with minimal boilerplate!
+至此，您已运行并测试了一个使用 Goa 构建的 **gRPC 服务**。继续探索 DSL 可添加更多能力，如 **流式处理（streaming）**、**认证拦截器**、以及针对多环境的自动代码生成，迈向更健壮的 Go 微服务架构。

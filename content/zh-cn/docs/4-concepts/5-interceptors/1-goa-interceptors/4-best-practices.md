@@ -1,128 +1,114 @@
 ---
-title: "Interceptor Best Practices"
-description: "Guidelines and best practices for implementing Goa interceptors"
+title: "拦截器最佳实践"
+description: "在 Goa 中实现拦截器的指南与最佳实践"
 weight: 4
 ---
 
-This guide covers best practices and guidelines for implementing interceptors in your Goa services.
+本文涵盖在 Goa 服务中实现拦截器的最佳实践与指导原则。
 
-## Design Time Best Practices
+## 设计期最佳实践
 
-### 1. Keep Interceptors Focused
+### 1. 保持拦截器聚焦
 
-Interceptors should follow the single responsibility principle. Each interceptor
-should handle one specific cross-cutting concern, such as logging, metrics, or
-authentication. This makes them:
+拦截器应遵循单一职责原则。每个拦截器应处理一种特定的横切关注点，如日志、指标或认证。这将使其：
 
-- Easier to maintain and update independently
-- Simpler to test in isolation 
-- More reusable across different services
-- Clearer in their purpose and behavior
-- Easier to compose together in different combinations
+- 更易于独立维护与更新
+- 更易于在隔离环境中测试
+- 更易于在不同服务间复用
+- 目的与行为更清晰
+- 更易于以不同组合进行复合
 
-For example, instead of creating one large interceptor that handles both logging
-and metrics, create two separate focused interceptors that can be used together
-when needed. This separation of concerns leads to more maintainable and flexible
-code.
+例如，与其创建一个同时处理日志与指标的大拦截器，不如创建两个聚焦的拦截器并在需要时组合使用。关注点分离能带来更易维护与更灵活的代码。
 
-Here's an example showing the difference between focused and unfocused interceptors:
+以下示例展示聚焦与不聚焦拦截器的差异：
 
 ```go
-// Good: Focused interceptors
+// 推荐：聚焦的拦截器
 var Auth = Interceptor("Auth", func() {
-    Description("Handles authentication only")
+    Description("仅处理认证")
     ReadPayload(func() {
         Attribute("token", String)
     })
 })
 
 var Metrics = Interceptor("Metrics", func() {
-    Description("Collects metrics only")
+    Description("仅采集指标")
     ReadResult(func() {
         Attribute("status", Int)
     })
 })
 
-// Bad: Too many responsibilities
+// 不推荐：职责过多
 var AuthAndMetrics = Interceptor("AuthAndMetrics", func() {
-    Description("Handles both auth and metrics")
-    // Mixing concerns makes the interceptor harder to maintain
+    Description("同时处理认证与指标")
+    // 混合关注点会让拦截器难以维护
 })
 ```
 
-The focused interceptors are easier to test, maintain, and can be composed in
-different combinations as needed.
+聚焦的拦截器更易测试、维护，并可按需以不同组合进行复用。
 
-### 2. Choose Appropriate Scope
+### 2. 选择合适的作用域
 
-Consider carefully whether an interceptor should apply to an entire service or
-just specific methods. Service-level interceptors are good for consistent
-cross-cutting concerns, while method-level interceptors are better for specific
-requirements.
+需谨慎考虑拦截器应应用于整个服务还是仅应用于特定方法。服务级拦截器适合一致性的横切关注点，而方法级拦截器更适合特定需求。
 
-This example shows how to apply interceptors at different scopes:
+示例展示如何在不同作用域应用拦截器：
 
 ```go
 var _ = Service("users", func() {
-    // Good: Auth applies to all methods
+    // 推荐：认证应用于所有方法
     ServerInterceptor(Auth)
     
     Method("list", func() {
-        // Good: Metrics only needed for list
+        // 推荐：指标只在 list 方法需要
         ServerInterceptor(Metrics)
     })
 })
 ```
 
-Authentication is applied service-wide because it's needed everywhere, while
-metrics collection is only applied to the list method where it's relevant.
+认证在服务范围应用，因为其处处需要；而指标采集仅在相关方法上应用更为合适。
 
-### 3. Use Descriptive Names and Documentation
+### 3. 使用清晰的命名与文档
 
-Clear naming and documentation help other developers understand the purpose and
-behavior of your interceptors. The name should indicate what the interceptor
-does, and the description should explain its purpose and any important details.
+清晰的命名与文档有助于其他开发者理解拦截器的目的与行为。名称应表明拦截器的功能；描述应解释其目的与重要细节。
 
-Compare these examples:
+对比以下示例：
 
 ```go
-// Good: Clear name and description
+// 推荐：清晰的名称与描述
 var RequestValidator = Interceptor("RequestValidator", func() {
-    Description("Validates incoming requests against business rules")
+    Description("依据业务规则校验入站请求")
     ReadPayload(func() {
         Attribute("data")
     })
 })
 
-// Bad: Unclear purpose
+// 不推荐：目的不清晰
 var Handler = Interceptor("Handler", func() {
-    Description("Handles stuff")
+    Description("处理一些东西")
     ReadPayload(func() {
         Attribute("data")
     })
 })
 ```
 
-The well-named interceptor makes its purpose clear and provides useful documentation.
+良好的命名让目的清晰，并提供有用的文档。
 
-## Implementation Best Practices
+## 实现最佳实践
 
-### 1. Handle Errors Gracefully
+### 1. 优雅处理错误
 
-Define your errors at design time using Goa's error DSL. This ensures type
-safety and consistent error handling across your service. The error definitions
-become part of your API contract and generate appropriate helper functions.
+使用 Goa 的错误 DSL 在设计期定义错误，以确保类型安全与一致的错误处理。错误定义将成为 API 合同的一部分，并生成相应的辅助函数。
 
-Here's how to define and use errors properly:
+如下正确定义与使用错误：
 
 ```go
-// In your design
+// 设计中
 var _ = Service("users", func() {
-    // Define service-specific errors
-    Error("unauthorized", ErrorResult, "Authentication failed")
-    Error("invalid_token", ErrorResult, "Invalid or malformed token")
+    // 定义服务特定的错误
+    Error("unauthorized", ErrorResult, "认证失败")
+    Error("invalid_token", ErrorResult, "令牌无效或格式错误")
     
-    // Use errors in interceptor design
+    // 在拦截器设计中使用错误
     var Auth = Interceptor("Auth", func() {
         Error("unauthorized")
         Error("invalid_token")
@@ -134,11 +120,11 @@ var _ = Service("users", func() {
     ServerInterceptor(Auth)
 })
 
-// In your implementation
+// 实现中
 func (i *ServerInterceptors) Auth(ctx context.Context, info *AuthInfo, next goa.Endpoint) (any, error) {
     p := info.Payload()
     
-    // Use design-time errors
+    // 使用设计期错误
     token := p.Token()
     if token == "" {
         return nil, genservice.MakeUnauthorized(fmt.Errorf("authentication token required"))
@@ -153,26 +139,22 @@ func (i *ServerInterceptors) Auth(ctx context.Context, info *AuthInfo, next goa.
 }
 ```
 
-The generated `Make*` functions ensure that your errors match the design and
-include proper error codes and metadata. This approach provides better error
-handling than generic errors and helps maintain API consistency.
+生成的 `Make*` 函数确保错误与设计匹配，并包含恰当的错误码与元数据。这比通用错误更好，也有助于维护 API 一致性。
 
-### 2. Preserve Context Values
+### 2. 保留上下文值
 
-When working with context in interceptors, it's important to properly manage and
-preserve context values. Many libraries and tools (like tracers, loggers, or
-authentication) store information in the context. Your interceptor should:
+在拦截器中处理上下文时，应正确管理与保留上下文值。许多库与工具（如链路追踪、日志或认证）都会将信息存储在上下文中。拦截器应：
 
-- Derive new contexts rather than creating fresh ones
-- Preserve existing values when adding new ones
-- Clean up resources properly using defer
-- Pass the enriched context to the next handler
+- 派生新上下文，而非创建全新上下文
+- 添加新值时保留已有值
+- 使用 defer 正确清理资源
+- 将丰富后的上下文传递给下一个处理器
 
-Here's an example of proper context handling:
+如下为正确的上下文处理示例：
 
 ```go
 func (i *ServerInterceptors) Tracer(ctx context.Context, info *TracerInfo, next goa.Endpoint) (any, error) {
-    // Good: Derive new context, preserve existing values
+    // 推荐：派生新上下文，保留既有值
     ctx, span := tracer.Start(ctx, info.Method())
     defer span.End()
     
@@ -180,64 +162,58 @@ func (i *ServerInterceptors) Tracer(ctx context.Context, info *TracerInfo, next 
 }
 ```
 
-This approach ensures that:
-- Existing context values (like request IDs or auth info) are preserved
-- Resources are properly cleaned up even if errors occur
-- Downstream handlers have access to all necessary context information
+此方式确保：
+- 已有上下文值（如请求 ID 或认证信息）得到保留
+- 即使发生错误也能正确清理资源
+- 下游处理器可访问必要的上下文信息
 
-## Performance Best Practices
+## 性能最佳实践
 
-Since interceptors run on every request, their performance impact is multiplied
-across your service. Following these practices helps ensure your interceptors
-remain efficient at scale.
+拦截器在每次请求都会执行，其性能影响会在服务中被放大。遵循以下实践可确保拦截器在规模下仍保持高效。
 
-### 1. Minimize Allocations
+### 1. 尽量减少分配
 
-Memory allocations can significantly impact performance, especially under high
-load. Use object pools, preallocate where possible, and avoid unnecessary
-allocations in your interceptors. Common techniques include:
+内存分配在高负载下会显著影响性能。使用对象池、尽可能预分配，并避免不必要的分配。常见技巧包括：
 
-- Using sync.Pool for frequently allocated objects
-- Preallocating slices with known capacity
-- Reusing objects across requests
-- Avoiding unnecessary string concatenations
+- 使用 sync.Pool 管理频繁分配的对象
+- 为已知容量的切片进行预分配
+- 在请求之间复用对象
+- 避免不必要的字符串拼接
 
-Here's an example of efficient object management:
+如下为高效对象管理示例：
 
 ```go
 func (i *ServerInterceptors) Metrics(ctx context.Context, info *MetricsInfo, next goa.Endpoint) (any, error) {
-    // Good: Reuse objects
+    // 推荐：复用对象
     labels := i.getLabelsFromPool()
     defer i.putLabelsToPool(labels)
     
-    // Bad: Create new objects each time
+    // 不推荐：每次都新建对象
     // labels := make(map[string]string)
     
     return next(ctx, info.RawPayload())
 }
 ```
 
-This approach reduces garbage collection pressure and improves overall service
-performance, especially during high-traffic periods.
+该方式能降低 GC 压力并提升整体性能，尤其在高流量期间。
 
-### 2. Use Appropriate Caching
+### 2. 使用恰当的缓存
 
-Caching can dramatically improve performance, but it needs to be implemented
-carefully. Consider:
+缓存可显著提升性能，但需谨慎实现。需考虑：
 
-- Cache duration and expiration strategy
-- Cache key design
-- Memory usage and eviction policies
-- Cache invalidation mechanisms
-- Concurrent access patterns
+- 缓存时长与过期策略
+- 缓存键设计
+- 内存使用与淘汰策略
+- 缓存失效机制
+- 并发访问模式
 
-Here's an example of effective cache usage:
+如下为高效缓存使用示例：
 
 ```go
 func (i *ClientInterceptors) Cache(ctx context.Context, info *CacheInfo, next goa.Endpoint) (any, error) {
     p := info.Payload()
     
-    // Good: Use appropriate cache duration
+    // 推荐：使用合适的缓存时长
     if cached := i.cache.Get(p.CacheKey()); cached != nil {
         if !isExpired(cached, p.TTL()) {
             return cached, nil
@@ -248,25 +224,23 @@ func (i *ClientInterceptors) Cache(ctx context.Context, info *CacheInfo, next go
 }
 ```
 
-This pattern ensures efficient cache usage while maintaining data freshness and
-managing memory effectively.
+该模式在维护数据新鲜度与管理内存方面保证了高效的缓存使用。
 
-### 3. Avoid Blocking Operations
+### 3. 避免阻塞操作
 
-Blocking operations in interceptors can create bottlenecks and reduce service
-throughput. Best practices include:
+拦截器中的阻塞操作会形成瓶颈并降低服务吞吐。最佳实践包括：
 
-- Moving slow operations to goroutines
-- Using buffered channels
-- Implementing timeouts
-- Handling errors asynchronously
-- Using non-blocking algorithms where possible
+- 将耗时操作移到 goroutine
+- 使用带缓冲的通道
+- 实现超时机制
+- 异步处理错误
+- 尽可能使用非阻塞算法
 
-Here's how to handle potentially blocking operations:
+如下处理潜在阻塞操作：
 
 ```go
 func (i *ServerInterceptors) AsyncLogger(ctx context.Context, info *AsyncLoggerInfo, next goa.Endpoint) (any, error) {
-    // Good: Non-blocking logging
+    // 推荐：非阻塞日志
     go func() {
         if err := i.logAsync(info.Method(), info.Payload()); err != nil {
             i.errorHandler(err)
@@ -277,25 +251,17 @@ func (i *ServerInterceptors) AsyncLogger(ctx context.Context, info *AsyncLoggerI
 }
 ```
 
-This approach prevents logging operations from blocking the request pipeline while
-ensuring all operations are still performed.
+该方式避免日志阻塞请求管道，同时确保操作仍被执行。
 
-## Conclusion
+## 结论
 
-Goa interceptors provide a powerful way to handle cross-cutting concerns in your
-services while maintaining clean, maintainable code. Their design-first approach,
-combined with type-safe code generation, helps you build robust services that are
-easy to evolve over time. Key benefits include:
+Goa 拦截器在保持代码整洁与可维护的同时，为处理横切关注点提供了强大能力。其“先设计再实现”的方法与类型安全的代码生成，帮助你构建稳健、易于演进的服务。关键收益包括：
 
-- Type safety throughout your interceptor chain
-- Clear separation of concerns in your codebase
-- Compile-time validation of interceptor usage
-- Flexible composition of cross-cutting behaviors
-- High performance through generated code
-- Excellent testing support
+- 在拦截器链中保持类型安全
+- 代码库中的明确关注点分离
+- 在编译期校验拦截器的使用
+- 横切行为的灵活组合
+- 通过生成代码获得高性能
+- 出色的测试支持
 
-By following these best practices and leveraging Goa's interceptor capabilities,
-you can build services that are both maintainable and performant, while keeping
-your business logic clean and focused. Whether you're implementing authentication,
-logging, metrics collection, or other cross-cutting concerns, interceptors provide
-a structured and type-safe way to achieve your goals.
+遵循这些最佳实践并充分利用 Goa 的拦截器能力，你可以在保持业务逻辑简洁聚焦的同时，构建既可维护又高性能的服务。无论是实现认证、日志、指标采集或其他横切关注点，拦截器都提供了结构化且类型安全的实现方式。

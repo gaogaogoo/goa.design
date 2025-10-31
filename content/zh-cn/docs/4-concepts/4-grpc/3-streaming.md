@@ -1,47 +1,43 @@
 ---
-title: "Streaming"
-linkTitle: "Streaming"
+title: "流式通信"
+linkTitle: "流式通信"
 weight: 3
-description: "Learn how to implement gRPC streaming services in Goa, including server-side, client-side, and bidirectional streaming patterns"
+description: "学习如何在 Goa 中实现 gRPC 流式服务，包括服务端流、客户端流与双向流等模式"
 ---
 
-Goa provides comprehensive support for gRPC streaming, enabling you to build
-services that can handle continuous data transmission in real-time. This guide
-covers the different streaming patterns available in gRPC and how to implement
-them using Goa.
+Goa 对 gRPC 流式通信提供了全面支持，可用于构建能够实时处理持续数据传输的服务。本文介绍 gRPC 中可用的不同流式模式，以及如何使用 Goa 进行实现。
 
-{{< alert title="See also" color="info" >}}
-For cross-transport rules and which streaming modes are valid per transport, see
-[Transports](../../6-transports).
+{{< alert title="另见" color="info" >}}
+有关跨传输规则以及每个传输支持的有效流式模式，请参阅
+[Transports](../../6-transports)。
 {{< /alert >}}
 
-## Streaming Patterns
+## 流式模式
 
-gRPC supports three streaming patterns:
+gRPC 支持三种流式模式：
 
-### Server-Side Streaming
+### 服务端流（Server-Side Streaming）
 
-In server-side streaming, the client sends a single request and receives a
-stream of responses. This pattern is useful for scenarios like:
-- Real-time data feeds
-- Progress updates
-- System monitoring
+在服务端流中，客户端发送单个请求并接收一个响应流。该模式适用于：
+- 实时数据馈送
+- 进度更新
+- 系统监控
 
-Here's how to define a server streaming method:
+如下定义一个服务端流方法：
 
 ```go
 var _ = Service("monitor", func() {
     Method("watch", func() {
-        Description("Stream system metrics")
+        Description("流式传输系统指标")
         
         Payload(func() {
-            Field(1, "interval", Int, "Sampling interval in seconds")
+            Field(1, "interval", Int, "采样间隔（秒）")
             Required("interval")
         })
         
         StreamingResult(func() {
-            Field(1, "cpu", Float32, "CPU usage percentage")
-            Field(2, "memory", Float32, "Memory usage percentage")
+            Field(1, "cpu", Float32, "CPU 使用率（百分比）")
+            Field(2, "memory", Float32, "内存使用率（百分比）")
             Required("cpu", "memory")
         })
         
@@ -52,30 +48,29 @@ var _ = Service("monitor", func() {
 })
 ```
 
-### Client-Side Streaming
+### 客户端流（Client-Side Streaming）
 
-Client-side streaming allows the client to send a stream of requests while
-receiving a single response. This is ideal for:
-- File uploads
-- Batch processing
-- Aggregating data
+客户端流允许客户端发送一个请求流并接收单个响应。常用于：
+- 文件上传
+- 批处理
+- 数据聚合
 
-Example definition:
+示例定义：
 
 ```go
 var _ = Service("analytics", func() {
     Method("process", func() {
-        Description("Process stream of analytics events")
+        Description("处理分析事件流")
         
         StreamingPayload(func() {
-            Field(1, "event_type", String, "Type of event")
-            Field(2, "timestamp", String, "Event timestamp")
-            Field(3, "data", Bytes, "Event data")
+            Field(1, "event_type", String, "事件类型")
+            Field(2, "timestamp", String, "事件时间戳")
+            Field(3, "data", Bytes, "事件数据")
             Required("event_type", "timestamp", "data")
         })
         
         Result(func() {
-            Field(1, "processed_count", Int64, "Number of events processed")
+            Field(1, "processed_count", Int64, "已处理事件数量")
             Required("processed_count")
         })
         
@@ -86,31 +81,30 @@ var _ = Service("analytics", func() {
 })
 ```
 
-### Bidirectional Streaming
+### 双向流（Bidirectional Streaming）
 
-Bidirectional streaming enables both the client and server to send streams of
-messages simultaneously. This pattern is perfect for:
-- Real-time chat applications
-- Gaming
-- Interactive data processing
+双向流允许客户端与服务端同时发送消息流。该模式非常适合：
+- 实时聊天应用
+- 游戏
+- 交互式数据处理
 
-Example definition:
+示例定义：
 
 ```go
 var _ = Service("chat", func() {
     Method("connect", func() {
-        Description("Establish bidirectional chat connection")
+        Description("建立双向聊天连接")
         
         StreamingPayload(func() {
-            Field(1, "message", String, "Chat message")
-            Field(2, "user_id", String, "User identifier")
+            Field(1, "message", String, "聊天消息")
+            Field(2, "user_id", String, "用户标识")
             Required("message", "user_id")
         })
         
         StreamingResult(func() {
-            Field(1, "message", String, "Chat message")
-            Field(2, "user_id", String, "User identifier")
-            Field(3, "timestamp", String, "Message timestamp")
+            Field(1, "message", String, "聊天消息")
+            Field(2, "user_id", String, "用户标识")
+            Field(3, "timestamp", String, "消息时间戳")
             Required("message", "user_id", "timestamp")
         })
         
@@ -121,51 +115,44 @@ var _ = Service("chat", func() {
 })
 ```
 
-## Implementation
+## 实现
 
-The implementation of gRPC streaming in Goa involves both server-side and
-client-side code. Goa generates the necessary interfaces and types based on your
-service definition, and you'll need to implement these interfaces to handle the
-streaming logic.
+在 Goa 中实现 gRPC 流式通信涉及服务端与客户端代码。Goa 会基于你的服务定义生成所需的接口与类型，你需要实现这些接口以处理流式逻辑。
 
-### Server Implementation
+### 服务端实现
 
-On the server side, you'll need to implement methods that handle the streaming
-communication. Each streaming pattern requires a different approach to handle
-the data flow. Let's look at each pattern in detail:
+服务端需要实现处理流式通信的方法。不同的流式模式对数据流的处理方式不同。下面分别说明：
 
-#### Server-Side Streaming Example: System Monitoring
+#### 服务端流示例：系统监控
 
-In this example, we'll implement a service that streams system metrics (CPU and
-memory usage) to clients at regular intervals. The server maintains an open
-connection and continuously sends data to the client.
+该示例实现一个服务，按固定间隔向客户端流式发送系统指标（CPU 与内存使用率）。服务端保持连接打开并持续向客户端发送数据。
 
-The `monitor.WatchServerStream` interface provided by Goa gives us two main capabilities:
-1. `Send(*WatchResult) error`: Sends a single result to the client
-2. Access to the context through `Context() context.Context`
+Goa 提供的 `monitor.WatchServerStream` 接口包含两项主要能力：
+1. `Send(*WatchResult) error`：向客户端发送单个结果
+2. 通过 `Context() context.Context` 访问上下文
 
-Here's how we use these capabilities:
+使用方式如下：
 
 ```go
-// Server-side streaming
+// 服务端流示例
 func (s *monitorService) Watch(ctx context.Context, p *monitor.WatchPayload, stream monitor.WatchServerStream) error {
-    // Create a ticker that fires at the interval specified by the client
+    // 根据客户端提供的间隔创建定时器
     ticker := time.NewTicker(time.Duration(p.Interval) * time.Second)
-    // Ensure the ticker is cleaned up when we're done
+    // 确保在结束时清理定时器
     defer ticker.Stop()
 
-    // Infinite loop to keep sending metrics
+    // 无限循环以持续发送指标
     for {
         select {
-        // Check if the client has cancelled the request using the context
+        // 使用上下文检查客户端是否取消请求
         case <-ctx.Done():
             return ctx.Err()
-        // Wait for the next tick
+        // 等待下一次触发
         case <-ticker.C:
-            // Get the current system metrics (implementation not shown)
+            // 获取当前系统指标（实现省略）
             metrics := getSystemMetrics()
-            // Use the stream's Send method to send metrics to the client
-            // Each call to Send transmits one message in the stream
+            // 使用流的 Send 方法向客户端发送指标
+            // 每次调用 Send 都会在流中传输一条消息
             if err := stream.Send(&monitor.WatchResult{
                 CPU:    metrics.CPU,
                 Memory: metrics.Memory,
@@ -177,31 +164,30 @@ func (s *monitorService) Watch(ctx context.Context, p *monitor.WatchPayload, str
 }
 ```
 
-#### Client-Side Streaming Example: Analytics Processing
+#### 客户端流示例：分析处理
 
-This example shows how to handle a stream of events from the client. The
-`analytics.ProcessServerStream` interface provides three key methods:
-1. `Recv() (*ProcessPayload, error)`: Receives the next message from the client
-2. `SendAndClose(*ProcessResult) error`: Sends a final response and closes the stream
-3. Access to the context through `Context() context.Context`
+该示例演示如何处理来自客户端的事件流。`analytics.ProcessServerStream` 接口提供三个关键方法：
+1. `Recv() (*ProcessPayload, error)`：接收来自客户端的下一条消息
+2. `SendAndClose(*ProcessResult) error`：发送最终响应并关闭流
+3. 通过 `Context() context.Context` 访问上下文
 
-Here's how we use these capabilities:
+使用方式如下：
 
 ```go
-// Client-side streaming
+// 客户端流示例
 func (s *analyticsService) Process(ctx context.Context, stream analytics.ProcessServerStream) error {
-    // Keep track of how many events we've processed
+    // 记录已处理事件数量
     var count int64
     
-    // Continue reading events from the stream until it's closed
+    // 持续从流中读取事件，直到其关闭
     for {
-        // Use Recv() to get the next message in the stream
-        // Recv blocks until a message is received or the stream is closed
+        // 使用 Recv() 获取下一条消息
+        // Recv 会阻塞直到收到消息或流关闭
         event, err := stream.Recv()
         if err == io.EOF {
-            // Client has finished sending data
-            // Use SendAndClose to send the final result and close the stream
-            // This is specific to client-streaming - we can only send one response
+            // 客户端已发送完数据
+            // 使用 SendAndClose 发送最终结果并关闭流
+            // 客户端流仅能发送一个响应
             return stream.SendAndClose(&analytics.ProcessResult{
                 ProcessedCount: count,
             })
@@ -210,7 +196,7 @@ func (s *analyticsService) Process(ctx context.Context, stream analytics.Process
             return err
         }
         
-        // Process the received event (implementation not shown)
+        // 处理收到的事件（实现省略）
         if err := processEvent(event); err != nil {
             return err
         }
@@ -219,42 +205,40 @@ func (s *analyticsService) Process(ctx context.Context, stream analytics.Process
 }
 ```
 
-#### Bidirectional Streaming Example: Chat Service
+#### 双向流示例：聊天服务
 
-This example demonstrates a chat service where both sides can send messages at
-any time. The `chat.ConnectServerStream` interface combines capabilities of both
-streaming types:
-1. `Recv() (*ConnectPayload, error)`: Receives messages from the client
-2. `Send(*ConnectResult) error`: Sends messages to the client
-3. Access to the context through `Context() context.Context`
+该示例演示一个聊天服务，双方可在任意时刻发送消息。`chat.ConnectServerStream` 接口同时具备两类流式能力：
+1. `Recv() (*ConnectPayload, error)`：接收来自客户端的消息
+2. `Send(*ConnectResult) error`：向客户端发送消息
+3. 通过 `Context() context.Context` 访问上下文
 
-Here's how we use these capabilities:
+使用方式如下：
 
 ```go
-// Bidirectional streaming
+// 双向流示例
 func (s *chatService) Connect(ctx context.Context, stream chat.ConnectServerStream) error {
-    // Continue processing messages until the client disconnects
+    // 持续处理消息直到客户端断开连接
     for {
-        // Use Recv() to wait for and receive the next client message
-        // This blocks until a message arrives or the client closes the stream
+        // 使用 Recv() 等待并接收下一条客户端消息
+        // 此调用会阻塞直到消息到达或客户端关闭流
         msg, err := stream.Recv()
         if err == io.EOF {
-            // Client has closed their send stream
+            // 客户端已关闭其发送流
             return nil
         }
         if err != nil {
             return err
         }
 
-        // Create a response with the current timestamp
+        // 构造带当前时间戳的响应
         response := &chat.ConnectResult{
             Message:   msg.Message,
             UserID:    msg.UserID,
             Timestamp: time.Now().Format(time.RFC3339),
         }
         
-        // Use Send() to send a message back to the client
-        // In bidirectional streaming, we can send and receive in any order
+        // 使用 Send() 向客户端发送消息
+        // 在双向流中，可任意顺序发送与接收
         if err := stream.Send(response); err != nil {
             return err
         }
@@ -262,72 +246,72 @@ func (s *chatService) Connect(ctx context.Context, stream chat.ConnectServerStre
 }
 ```
 
-### Client Implementation
+### 客户端实现
 
-The client side interfaces mirror the server side but from the client's perspective. Let's look at each type:
+客户端侧的接口与服务端接口相互镜像，但从客户端视角出发。分别如下：
 
-#### Server-Side Streaming Client: Monitoring Metrics
+#### 服务端流客户端：监控指标
 
-The client receives a `monitor.WatchClient` interface that provides:
-1. `Recv() (*WatchResult, error)`: Receives the next metrics update
-2. `Close() error`: Closes the stream
+客户端获得的 `monitor.WatchClient` 接口提供：
+1. `Recv() (*WatchResult, error)`：接收下一次指标更新
+2. `Close() error`：关闭流
 
 ```go
-// Server-side streaming client
+// 服务端流客户端
 func watchMetrics(ctx context.Context, client *monitor.Client) error {
-    // Start the streaming connection with initial parameters
-    // This returns a stream interface for receiving metrics
+    // 使用初始参数建立流式连接
+    // 返回用于接收指标的流接口
     stream, err := client.Watch(ctx, &monitor.WatchPayload{
-        Interval: 5, // Request metrics every 5 seconds
+        Interval: 5, // 每 5 秒请求一次指标
     })
     if err != nil {
         return err
     }
 
-    // Continue receiving metrics until the stream ends
+    // 持续接收指标直到流结束
     for {
-        // Use Recv() to get the next metrics update
-        // This blocks until new metrics arrive or the server closes the stream
+        // 使用 Recv() 获取下一次指标更新
+        // 该调用会阻塞直到新指标到达或服务端关闭流
         metrics, err := stream.Recv()
         if err == io.EOF {
-            // Server has closed the stream
+            // 服务端已关闭流
             break
         }
         if err != nil {
             return err
         }
-        // Process the received metrics (in this case, just log them)
+        // 处理收到的指标（此处仅记录日志）
         log.Printf("CPU: %.2f%%, Memory: %.2f%%", metrics.CPU, metrics.Memory)
     }
     return nil
 }
 ```
 
-#### Client-Side Streaming Client: Uploading Events
+#### 客户端流客户端：上传事件
 
-The client receives a `analytics.ProcessClient` interface that provides:
-1. `Send(*ProcessPayload) error`: Sends an event to the server
-2. `CloseAndRecv() (*ProcessResult, error)`: Closes the send stream and waits for the final response
+客户端获得的 `analytics.ProcessClient` 接口提供：
+1. `Send(*ProcessPayload) error`：向服务端发送事件
+2. `CloseAndRecv() (*ProcessResult, error)`：关闭发送流并等待最终响应
 
 ```go
-// Client-side streaming client
+// 客户端流客户端
 func uploadEvents(ctx context.Context, client *analytics.Client, events []*analytics.Event) error {
-    // Initialize the streaming connection
-    // This returns a stream interface for sending events
+    // 初始化流式连接
+    // 返回用于发送事件的流接口
     stream, err := client.Process(ctx)
     if err != nil {
         return err
     }
 
-    // Send each event to the server using the stream's Send method
+    // 通过流的 Send 方法逐个发送事件到服务端
     for _, event := range events {
         if err := stream.Send(event); err != nil {
             return err
         }
     }
 
-    // Use CloseAndRecv to close our send stream and get the server's response
-    // This blocks until the server processes all events and sends the result
+    // 使用 CloseAndRecv 关闭发送流并获取服务端响应
+    // 此调用会阻塞直到服务端处理完成并返回结果
     result, err := stream.CloseAndRecv()
     if err != nil {
         return err
@@ -337,28 +321,28 @@ func uploadEvents(ctx context.Context, client *analytics.Client, events []*analy
 }
 ```
 
-#### Bidirectional Streaming Client: Chat Client
+#### 双向流客户端：聊天客户端
 
-The client receives a `chat.ConnectClient` interface that combines both capabilities:
-1. `Send(*ConnectPayload) error`: Sends messages to the server
-2. `Recv() (*ConnectResult, error)`: Receives messages from the server
-3. `CloseSend() error`: Closes the send stream
+客户端获得的 `chat.ConnectClient` 接口同时具备以下能力：
+1. `Send(*ConnectPayload) error`：向服务端发送消息
+2. `Recv() (*ConnectResult, error)`：接收来自服务端的消息
+3. `CloseSend() error`：关闭发送流
 
 ```go
-// Bidirectional streaming client
+// 双向流客户端
 func startChat(ctx context.Context, client *chat.Client, userID string) error {
-    // Initialize the bidirectional stream
-    // This returns a stream interface for both sending and receiving
+    // 初始化双向流
+    // 返回同时用于发送与接收的流接口
     stream, err := client.Connect(ctx)
     if err != nil {
         return err
     }
 
-    // Start a separate goroutine to send messages
-    // This demonstrates how we can send and receive concurrently
+    // 启动独立的 goroutine 负责发送消息
+    // 展示并发发送与接收
     go func() {
         for {
-            // Use Send to transmit messages to the server
+            // 使用 Send 发送消息到服务端
             if err := stream.Send(&chat.ConnectPayload{
                 Message: "Hello",
                 UserID:  userID,
@@ -370,18 +354,18 @@ func startChat(ctx context.Context, client *chat.Client, userID string) error {
         }
     }()
 
-    // Use the main goroutine to receive messages
+    // 主 goroutine 负责接收消息
     for {
-        // Use Recv to get the next message from the server
+        // 使用 Recv 接收服务端的下一条消息
         msg, err := stream.Recv()
         if err == io.EOF {
-            // Server has closed the stream
+            // 服务端已关闭流
             break
         }
         if err != nil {
             return err
         }
-        // Process the received message
+        // 处理收到的消息
         log.Printf("Received: %s from %s at %s",
             msg.Message, msg.UserID, msg.Timestamp)
     }
@@ -389,19 +373,19 @@ func startChat(ctx context.Context, client *chat.Client, userID string) error {
 }
 ```
 
-## Error Handling
+## 错误处理
 
-When implementing streaming endpoints, proper error handling is crucial:
+在实现流式端点时，正确的错误处理至关重要：
 
-1. **Context Cancellation**: Always check for context cancellation to handle client disconnections gracefully.
-2. **EOF Handling**: Properly handle io.EOF to detect when the stream ends.
-3. **Resource Cleanup**: Use defer statements to ensure resources are properly cleaned up.
-4. **Partial Failures**: Consider implementing retry logic for transient failures.
+1. 上下文取消（Context Cancellation）：始终检查上下文取消以优雅处理客户端断开。
+2. EOF 处理：正确处理 io.EOF 以识别流结束。
+3. 资源清理：使用 defer 确保资源得到正确清理。
+4. 部分失败：为瞬时错误考虑实现重试逻辑。
 
-## Best Practices
+## 最佳实践
 
-1. **Message Size**: Keep message sizes reasonable to avoid memory pressure.
-2. **Flow Control**: Implement proper flow control to prevent overwhelming either side.
-3. **Timeouts**: Set appropriate timeouts for streaming operations.
-4. **Monitoring**: Add metrics to track streaming performance and errors.
-5. **Documentation**: Clearly document the streaming behavior and error conditions.
+1. 消息大小：保持消息大小合理以避免内存压力。
+2. 流量控制：实现恰当的流控，避免任一端被过载。
+3. 超时：为流式操作设置合适的超时。
+4. 监控：添加指标以跟踪流式性能与错误。
+5. 文档：清晰记录流式行为与错误条件。

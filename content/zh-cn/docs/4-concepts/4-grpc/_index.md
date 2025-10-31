@@ -1,35 +1,32 @@
 ---
-title: "gRPC Advanced Topics"
-linkTitle: "gRPC Advanced Topics"
+title: "gRPC 高级主题"
+linkTitle: "gRPC 高级主题"
 weight: 4
-description: "Design and implement gRPC services using Goa's DSL and code generation"
+description: "使用 Goa 的 DSL 与代码生成来设计并实现 gRPC 服务"
 ---
 
-Goa provides comprehensive support for building gRPC services through its DSL
-and code generation capabilities. It handles the complete lifecycle of gRPC
-service development, from service definition to Protocol Buffer generation and
-server/client implementation.
+Goa 通过其 DSL 与代码生成能力为构建 gRPC 服务提供全面支持。它处理 gRPC 服务开发的完整生命周期，从服务定义到 Protocol Buffer 生成，再到服务端/客户端实现。
 
-## Key Features
+## 关键特性
 
-Goa's gRPC support includes:
+Goa 的 gRPC 支持包括：
 
-- **Automatic Protocol Buffer Generation**: Goa automatically generates `.proto` files from your service definitions
-- **Type Safety**: End-to-end type safety from service definition to implementation
-- **Code Generation**: Generates both server and client code
-- **Built-in Validation**: Request validation based on your service definition
-- **Streaming Support**: Full support for all gRPC streaming patterns
-- **Error Handling**: Comprehensive error handling with status code mapping
+- **自动生成 Protocol Buffer**：Goa 可根据服务定义自动生成 `.proto` 文件
+- **类型安全**：从服务定义到实现的端到端类型安全
+- **代码生成**：同时生成服务器与客户端代码
+- **内置校验**：基于服务定义的请求校验
+- **流式支持**：完整支持所有 gRPC 流式模式
+- **错误处理**：带状态码映射的全面错误处理
 
-## Getting Started
+## 快速开始
 
-Define a basic gRPC service:
+定义一个基础的 gRPC 服务：
 
 ```go
 var _ = Service("calculator", func() {
-    // Enable gRPC transport
+    // 启用 gRPC 传输
     GRPC(func() {
-        // Configure protoc options
+        // 配置 protoc 选项
         Meta("protoc:path", "protoc")
         Meta("protoc:version", "v3")
     })
@@ -47,21 +44,21 @@ var _ = Service("calculator", func() {
 })
 ```
 
-Generate the service code:
+生成服务代码：
 
 ```bash
 goa gen calc/design
 ```
 
-This generates:
-- Protocol Buffer definitions
-- gRPC server and client code
-- Type-safe request/response structs
-- Service interfaces
+这将生成：
+- Protocol Buffer 定义
+- gRPC 服务器与客户端代码
+- 类型安全的请求/响应结构体
+- 服务接口
 
-## Additional Resources
+## 其他资源
 
-- [Protocol Buffers Documentation](https://protobuf.dev/) - Official documentation for Protocol Buffers
-- [gRPC Documentation](https://grpc.io/docs/) - Guide to gRPC concepts and reference
-- [gRPC-Go Documentation](https://pkg.go.dev/google.golang.org/grpc) - Go package documentation
-- [Protocol Buffer Style Guide](https://protobuf.dev/programming-guides/style/) - Best practices and guidelines
+- [Protocol Buffers 文档](https://protobuf.dev/) - 官方文档
+- [gRPC 文档](https://grpc.io/docs/) - gRPC 概念与参考指南
+- [gRPC-Go 文档](https://pkg.go.dev/google.golang.org/grpc) - Go 包文档
+- [Protocol Buffer 风格指南](https://protobuf.dev/programming-guides/style/) - 最佳实践与规范

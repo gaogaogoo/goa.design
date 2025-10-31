@@ -1,160 +1,159 @@
 ---
-title: "gRPC Overview"
-linkTitle: "Overview"
+title: "gRPC 概览"
+linkTitle: "概览"
 weight: 1
-description: "Learn about the core concepts of gRPC in Goa and how it integrates with Protocol Buffers"
+description: "了解 Goa 中 gRPC 的核心概念以及它与 Protocol Buffers 的集成"
 ---
 
-Goa provides first-class support for designing and implementing gRPC services. This guide introduces the core concepts of using gRPC with Goa.
+Goa 为 gRPC 服务的设计与实现提供一流支持。本文介绍在 Goa 中使用 gRPC 的核心概念。
 
-## What is gRPC?
+## 什么是 gRPC？
 
-[gRPC](https://grpc.io) is a high-performance RPC (Remote Procedure Call) framework that:
-- Uses Protocol Buffers for efficient serialization
-- Leverages HTTP/2 for transport
-- Supports multiple programming languages
-- Enables streaming communication patterns
+[gRPC](https://grpc.io) 是一个高性能的 RPC（远程过程调用）框架：
+- 使用 Protocol Buffers 进行高效序列化
+- 以 HTTP/2 作为传输层
+- 支持多种编程语言
+- 支持流式通信模式
 
-## Goa's gRPC Integration
+## Goa 的 gRPC 集成
 
-Goa's gRPC support provides:
+Goa 的 gRPC 支持提供：
 
-1. **High-Level Design**: Define services using Goa's DSL:
-   - Protocol Buffer definitions (`.proto` files)
-   - Server and client code
-   - Type-safe interfaces
-3. **Transport Support**: Full HTTP/2 and gRPC transport layer handling
-4. **Validation**: Built-in request validation
-5. **Error Handling**: Structured error handling with status codes
+1. **高层设计**：使用 Goa 的 DSL 定义服务：
+   - Protocol Buffer 定义（`.proto` 文件）
+   - 服务器与客户端代码
+   - 类型安全接口
+3. **传输支持**：完整的 HTTP/2 与 gRPC 传输层处理
+4. **校验**：内置请求校验
+5. **错误处理**：带状态码的结构化错误处理
 
-## Basic Service Structure
+## 基本服务结构
 
-Let's look at how to define a basic gRPC service in Goa. The following example demonstrates a simple calculator service that adds two numbers:
+来看如何在 Goa 中定义一个基础的 gRPC 服务。下面示例演示一个将两个数字相加的简单计算器服务：
 
 ```go
 var _ = Service("calculator", func() {
-    // Service description helps document the purpose of your service
+    // 服务描述用于记录服务目的
     Description("The Calculator service performs arithmetic operations")
 
-    // Enable and configure gRPC transport for this service
+    // 为该服务启用并配置 gRPC 传输
     GRPC(func() {
-        // This block can contain gRPC-specific settings like timeouts, 
-        // interceptors, etc.
+        // 此处可包含 gRPC 特定设置，如超时、拦截器等
     })
 
-    // Define a method named "add" that will be exposed as a gRPC endpoint
+    // 定义一个名为 "add" 的方法，作为 gRPC 端点暴露
     Method("add", func() {
-        // Document what this method does
+        // 记录该方法的用途
         Description("Add two numbers")
 
-        // Define the input message structure (what the client sends)
-        // Each Field takes: position number, field name, and type
+        // 定义输入消息结构（客户端发送的内容）
+        // 每个 Field 参数为：序号、字段名、类型
         Payload(func() {
-            Field(1, "a", Int)    // First number to add
-            Field(2, "b", Int)    // Second number to add
-            Required("a", "b")     // Both fields are mandatory
+            Field(1, "a", Int)    // 要相加的第一个数字
+            Field(2, "b", Int)    // 要相加的第二个数字
+            Required("a", "b")     // 两个字段都为必填
         })
 
-        // Define the output message structure (what the server returns)
+        // 定义输出消息结构（服务器返回的内容）
         Result(func() {
-            Field(1, "sum", Int)  // The result of adding a + b
+            Field(1, "sum", Int)  // a + b 的结果
         })
     })
 })
 ```
 
-This code defines a complete gRPC service with one method. The numbers in `Field(1, ...)` are Protocol Buffer field numbers, which are required for message serialization.
+上述代码定义了一个仅含一个方法的完整 gRPC 服务。`Field(1, ...)` 中的数字是 Protocol Buffer 的字段编号，这是消息序列化所必需的。
 
-## Protocol Buffer Integration
+## Protocol Buffer 映射
 
-When you define types in Goa, they are automatically mapped to corresponding Protocol Buffer types. Here's how Goa types correspond to Protocol Buffer types:
+在 Goa 中定义的类型会自动映射为对应的 Protocol Buffer 类型。以下展示 Goa 类型与 Protocol Buffer 类型的对应关系：
 
-| Goa Type  | Protocol Buffer Type |
-|-----------|---------------------|
-| Int       | int32              |
-| Int32     | int32              |
-| Int64     | int64              |
-| UInt      | uint32             |
-| UInt32    | uint32             |
-| UInt64    | uint64             |
-| Float32   | float              |
-| Float64   | double             |
-| String    | string             |
-| Boolean   | bool               |
-| Bytes     | bytes              |
-| ArrayOf   | repeated           |
-| MapOf     | map                |
+| Goa 类型  | Protocol Buffer 类型 |
+|-----------|----------------------|
+| Int       | int32                |
+| Int32     | int32                |
+| Int64     | int64                |
+| UInt      | uint32               |
+| UInt32    | uint32               |
+| UInt64    | uint64               |
+| Float32   | float                |
+| Float64   | double               |
+| String    | string               |
+| Boolean   | bool                 |
+| Bytes     | bytes                |
+| ArrayOf   | repeated             |
+| MapOf     | map                  |
 
-## Communication Patterns
+## 通信模式
 
-gRPC supports four different communication patterns. Let's look at each with examples:
+gRPC 支持四种不同的通信模式，下面逐一示例说明：
 
-1. **Unary RPC**: The simplest pattern - client sends one request and gets one response
+1. **Unary RPC**：最简单的模式——客户端发送一个请求并获得一个响应
    ```go
    Method("add", func() {
-       Description("Simple addition method - takes two numbers and returns their sum")
+       Description("简单加法：接收两个数字返回它们的和")
        Payload(func() {
-           Field(1, "x", Int, "First number")
-           Field(2, "y", Int, "Second number")
+           Field(1, "x", Int, "第一个数字")
+           Field(2, "y", Int, "第二个数字")
        })
        Result(func() {
-           Field(1, "sum", Int, "The sum of x and y")
+           Field(1, "sum", Int, "x 与 y 的和")
        })
    })
    ```
 
-2. **Server Streaming**: Client sends one request, but receives multiple responses over time
+2. **服务器流式**：客户端发送一个请求，但随着时间收到多个响应
    ```go
    Method("stream", func() {
-       Description("Streams countdown numbers from the given start number")
+       Description("从给定起始数字开始推送倒计时")
        Payload(func() {
-           Field(1, "start", Int, "Number to start counting down from")
+           Field(1, "start", Int, "倒计时起始数字")
        })
-       // StreamingResult indicates server will send multiple responses
+       // StreamingResult 表示服务器将发送多个响应
        StreamingResult(func() {
-           Field(1, "count", Int, "Current number in the countdown")
+           Field(1, "count", Int, "当前倒计时数字")
        })
    })
    ```
 
-3. **Client Streaming**: Client sends multiple requests over time, server sends one response
+3. **客户端流式**：客户端随着时间发送多个请求，服务器发送一个响应
    ```go
    Method("collect", func() {
-       Description("Accepts multiple numbers and returns their sum")
-       // StreamingPayload indicates client will send multiple requests
+       Description("接收多个数字并返回它们的总和")
+       // StreamingPayload 表示客户端将发送多个请求
        StreamingPayload(func() {
-           Field(1, "number", Int, "Number to add to the sum")
+           Field(1, "number", Int, "要累加的数字")
        })
        Result(func() {
-           Field(1, "total", Int, "Sum of all numbers received")
+           Field(1, "total", Int, "接收到的所有数字之和")
        })
    })
    ```
 
-4. **Bidirectional Streaming**: Both client and server can send multiple messages over time
+4. **双向流式**：客户端与服务器可在一段时间内互相发送多条消息
    ```go
    Method("chat", func() {
-       Description("Bidirectional chat where both sides can send messages")
+       Description("双向聊天，双方都可发送消息")
        StreamingPayload(func() {
-           Field(1, "message", String, "Chat message from client")
+           Field(1, "message", String, "客户端的聊天消息")
        })
        StreamingResult(func() {
-           Field(1, "response", String, "Chat message from server")
+           Field(1, "response", String, "服务器的聊天消息")
        })
    })
    ```
 
-Each pattern is useful for different scenarios:
-- Use Unary RPC for simple request-response interactions
-- Use Server Streaming when the client needs to receive a stream of data (e.g., real-time updates)
-- Use Client Streaming when you need to send lots of data to the server (e.g., uploading files)
-- Use Bidirectional Streaming for complex interactions like chat applications or real-time gaming
+各模式适用于不同场景：
+- 简单请求-响应交互使用 Unary RPC
+- 当客户端需要接收数据流（如实时更新）时使用服务器流式
+- 当需要向服务器发送大量数据（如文件上传）时使用客户端流式
+- 复杂交互（如聊天应用或实时游戏）使用双向流式
 
-## Next Steps
+## 下一步
 
-The following sections provide detailed information about:
-- [Service Design](../2-service-design): Detailed guide on defining services
-- [Streaming Patterns](../3-streaming): In-depth streaming implementation
-- [Error Handling](../4-errors): Comprehensive error handling
-- [Implementation](../5-implementation): Server and client implementation
-- [Transport & Configuration](../6-transport): Advanced transport topics
+以下章节提供更详细的内容：
+- [服务设计](../2-service-design)：服务定义的详细指南
+- [流式模式](../3-streaming)：深入的流式实现
+- [错误处理](../4-errors)：全面的错误处理
+- [实现](../5-implementation)：服务器与客户端实现
+- [传输与配置](../6-transport)：高级传输主题

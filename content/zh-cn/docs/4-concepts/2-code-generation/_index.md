@@ -1,176 +1,152 @@
 ---
-title: "Code Generation"
-linkTitle: "Code Generation"
+title: "代码生成"
+linkTitle: "代码生成"
 weight: 2
-description: "Learn how Goa generates code from your design, including command-line usage, generation process, and customization options."
+description: "了解 Goa 如何从你的设计生成代码，包括命令行用法、生成流程与自定义选项。"
 menu:
   main:
-    parent: "Concepts"
+    parent: "概念"
     weight: 2
 ---
 
-Goa's code generation system transforms your design into production-ready code.
-Rather than just scaffolding, Goa generates complete, runnable service
-implementations that follow best practices and maintain consistency across your
-entire API.
+Goa 的代码生成系统会将你的设计转化为可直接用于生产的代码。不同于仅生成脚手架，Goa 会生成完整且可运行的服务实现，遵循最佳实践并在整个 API 中保持一致性。
 
-## Benefits of Code Generation
+## 代码生成的益处
 
-- **Consistency**: Generated code follows consistent patterns and best practices
-- **Type Safety**: Strong typing throughout the generated implementation
-- **Validation**: Automatic request validation based on your design rules
-- **Documentation**: Generated OpenAPI specs and documentation
-- **Transport Support**: Multiple transport protocols from a single design
-- **Maintainability**: Changes to design automatically reflect in implementation
+- **一致性**：生成代码遵循一致的模式与最佳实践
+- **类型安全**：在实现中保持强类型
+- **验证**：基于设计规则自动验证请求
+- **文档**：生成 OpenAPI 规范与文档
+- **传输支持**：单一设计支持多种传输协议
+- **可维护性**：设计更改会自动反映到实现中
 
-## Code Generation Overview
+## 生成概览
 
-Goa's code generation takes your design files and produces complete, runnable service implementations.
+Goa 的代码生成会从你的设计文件出发，产出完整、可运行的服务实现。
 
-## Command Line Tools
+## 命令行工具
 
-### Installation
+### 安装
 
-Install Goa's command-line tools using:
+使用以下命令安装 Goa 的命令行工具：
 
 ```bash
 go install goa.design/goa/v3/cmd/goa@latest
 ```
 
-### Key Commands
+### 关键命令
 
-Goa provides two commands to help you generate and scaffold your services.
-All commands expect a Go package import path, not a filesystem path:
+Goa 提供两个命令帮助你生成与脚手架服务。所有命令都需要 Go 包导入路径，而非文件系统路径：
 
 ```bash
-# ✅ Correct: using Go package import path
+# ✅ 正确：使用 Go 包导入路径
 goa gen goa.design/examples/calc/design
 
-# ❌ Incorrect: using filesystem path
+# ❌ 错误：使用文件系统路径
 goa gen ./design
 ```
 
-#### Generate Code (`goa gen`)
+#### 生成代码（`goa gen`）
 
 ```bash
 goa gen <design-package-import-path> [-o <output-dir>]
 ```
 
-The primary command for code generation. It:
-- Processes your design package and generates implementation code
-- Recreates the entire `gen/` directory from scratch each time
-- Should be run after every design change
-- Allows custom output location with `-o` flag (defaults to `./gen`)
+主要的代码生成命令，功能包括：
+- 处理你的设计包并生成实现代码
+- 每次运行都会从零重建 `gen/` 目录
+- 每次设计变更后都应运行
+- 通过 `-o` 指定输出位置（默认 `./gen`）
 
-#### Create Example (`goa example`)
+#### 创建示例（`goa example`）
 
 ```bash
 goa example <design-package-import-path> [-o <output-dir>]
 ```
 
-A scaffolding command that:
-- Creates a one-time example implementation of your service
-- Generates handler stubs with example logic
-- Should only be run once when starting a new project
-- Is not meant to be re-run after design changes
-- Will NOT overwrite any custom implementation if re-run
+脚手架命令，作用包括：
+- 仅一次性创建服务的示例实现
+- 生成带有示例逻辑的处理器桩代码
+- 仅在新项目开始时运行一次
+- 设计变更后不应重复运行
+- 即便重复运行也不会覆盖已存在的自定义实现
 
-#### Show Version (`goa version`)
+#### 显示版本（`goa version`）
 
 ```bash
 goa version
 ```
 
-Displays the installed version of Goa.
+显示已安装的 Goa 版本。
 
-## Generation Process
+## 生成流程
 
-When you run the Goa code generation commands, Goa follows a systematic process
-to transform your design into working code:
+当你运行 Goa 的代码生成命令时，Goa 会遵循系统化流程将设计转化为可工作的代码：
 
-### Design Loading
+### 设计加载
 
-The generation process happens in several phases:
+生成流程包含以下阶段：
 
-1. **Bootstrap**: 
-   First, Goa creates a temporary `main.go` file that imports your design
-   package and the Goa packages. This temporary file is then compiled and
-   executed as a separate process to bootstrap the code generation.
+1. **引导（Bootstrap）**：
+   先创建一个临时的 `main.go` 文件，导入你的设计包与 Goa 包。该临时文件随后被编译并作为单独进程执行，以引导代码生成。
 
-2. **DSL Execution**:
-   The design package's initialization functions execute first, followed by the
-   DSL functions which construct expression objects in memory. These expressions
-   work together to create a comprehensive model representing your entire API
-   design.
+2. **DSL 执行**：
+   设计包的初始化函数先执行，随后执行 DSL 函数以在内存中构建表达式对象。这些表达式共同组成一个完整模型，表示整个 API 的设计。
 
-3. **Validation**:
-   During validation, Goa performs comprehensive checks on the expression tree
-   to ensure it is complete and well-formed. It verifies that all required
-   relationships between expressions are properly defined and that the design
-   follows all rules and constraints. This validation step helps catch potential
-   issues early in the development process before any code is generated.
+3. **验证**：
+   在验证阶段，Goa 会对表达式树进行全面检查，确保其完整且结构良好。会验证表达式之间的必要关系是否定义完备，并确保设计遵循所有规则与约束。此步骤有助于在生成代码前及早发现潜在问题。
 
-4. **Code Generation**:
-   Once validation is complete, Goa passes the valid expressions to the code
-   generators. These generators use the expression data to render templates,
-   which produce the actual code files. The generated files are then written to
-   the `gen/` directory in your project, organized by service and transport
-   layer.
+4. **代码生成**：
+   验证完成后，Goa 将有效的表达式传递给代码生成器。生成器会使用表达式数据渲染模板，产出实际代码文件。生成的文件会写入项目中的 `gen/` 目录，并按服务与传输层进行组织。
 
-## Customizing Generation
+## 自定义生成
 
-### Using Metadata
+### 使用元数据（Metadata）
 
-The `Meta` function allows you to customize code generation behavior. Here are
-key metadata tags that affect generation:
+`Meta` 函数允许你自定义代码生成行为。以下是影响生成的关键元数据标签：
 
-#### Type Generation Control
+#### 类型生成控制
 
-The `"type:generate:force"` tag can be used to force the generation of a type
-even if it is not directly referenced by any method. The values are the names
-of the services that need the type generated.
+`"type:generate:force"` 标签可强制生成某个类型，即使它未被任何方法直接引用。取值为需要生成该类型的服务名。
 
 ```go
 var MyType = Type("MyType", func() {
-    // Force type generation even if unused
+    // 即使未使用也强制生成类型
     Meta("type:generate:force", "service1", "service2")
     
     Attribute("name", String)
 })
 ```
 
-#### Package and Structure Customization
+#### 包与结构体自定义
 
-The `"struct:pkg:path"` tag allows you to specify the package and path for a
-type. The values is the package path relative to the `gen` package.
+`"struct:pkg:path"` 标签可指定类型的包与路径。取值为相对于 `gen` 包的包路径。
 
 ```go
 var MyType = Type("MyType", func() {
-    // Generate type in custom package
+    // 在自定义包中生成类型
     Meta("struct:pkg:path", "types")
     
     Attribute("ssn", String, func() {
-        // Override field name
+        // 覆盖字段名
         Meta("struct:field:name", "SSN")
-        // Custom struct tags
+        // 自定义 struct 标签
         Meta("struct:tag:json", "ssn,omitempty")
     })
 })
 ```
 
-#### Protocol Buffer Customization
+#### Protocol Buffer 自定义
 
-The `"struct:name:proto"` tag allows you to specify the name of the protocol
-buffer message for a type. The values are the package path, the message name,
-and the import path of the protocol buffer type.
+`"struct:name:proto"` 标签可指定类型的协议缓冲消息名。取值包含包路径、消息名以及协议缓冲类型的导入路径。
 
 ```go
 var Timestamp = Type("Timestamp", func() {
-    // Override protobuf message name
+    // 覆盖 protobuf 的消息名
     Meta("struct:name:proto", "MyProtoType")
     
     Field(1, "created_at", String, func() {
-        // Use Google's timestamp type
+        // 使用 Google 的时间戳类型
         Meta("struct:field:proto", 
             "google.protobuf.Timestamp",
             "google/protobuf/timestamp.proto",
@@ -180,66 +156,59 @@ var Timestamp = Type("Timestamp", func() {
 })
 ```
 
-#### OpenAPI Generation
+#### OpenAPI 生成
 
-The `"openapi:generate"` tag allows you to disable OpenAPI generation for a
-service. The values are the names of the services that need the type generated.
+`"openapi:generate"` 标签可用于禁用某服务的 OpenAPI 生成。取值为需要生成类型的服务名。
 
-The `"openapi:operationId"` tag allows you to specify the operation ID for a
-method. The values are the service name and the method name.
+`"openapi:operationId"` 标签可为方法指定操作 ID。取值为服务名与方法名。
 
-The `"openapi:tag"` tag allows you to specify the OpenAPI tags for a service.
-The values are the service name and the tag name.
+`"openapi:tag"` 标签可为服务指定 OpenAPI 标签。取值为服务名与标签名。
 
 ```go
 var _ = Service("MyService", func() {
-    // Disable OpenAPI generation for this service
+    // 禁用该服务的 OpenAPI 生成
     Meta("openapi:generate", "false")
     
     Method("MyMethod", func() {
-        // Custom operation ID
+        // 自定义操作 ID
         Meta("openapi:operationId", "{service}.{method}")
-        // Add OpenAPI tags
-        Meta("openapi:tag:Backend", "Backend API")
+        // 添加 OpenAPI 标签
+        Meta("openapi:tag:Backend", "后端 API")
     })
 })
 ```
 
-Common metadata uses:
-- Control which types get generated
-- Customize generated struct fields and tags
-- Override package locations
-- Configure protocol buffer generation
-- Customize API documentation
+常见元数据用途：
+- 控制哪些类型需要生成
+- 自定义生成的结构体字段与标签
+- 覆盖包位置
+- 配置 Protocol Buffer 的生成
+- 自定义 API 文档
 
-{{< alert title="Metadata Tips" color="primary" >}}
-- Use `type:generate:force` when types are only referenced indirectly
-- Keep package paths (`struct:pkg:path`) consistent across related types
-- Consider documentation impact when customizing OpenAPI generation
-- Use field customization sparingly to maintain consistency
+{{< alert title="元数据提示" color="primary" >}}
+- 当类型仅被间接引用时使用 `type:generate:force`
+- 在相关类型间保持包路径（`struct:pkg:path`）的一致性
+- 自定义 OpenAPI 生成时需考虑文档影响
+- 谨慎进行字段级自定义以保持一致性
 {{< /alert >}}
 
-### Plugin System
+### 插件系统
 
-Goa's plugin system allows you to extend and customize the code generation
-process. Plugins intercept the generation pipeline at specific points, enabling
-you to add features, modify generated code, or create entirely new outputs.
+Goa 的插件系统允许你扩展与自定义代码生成流程。插件可以在管线的特定阶段进行拦截，帮助你添加功能、修改生成代码或产出全新的输出。
 
-#### Plugin Capabilities
+#### 插件能力
 
-Plugins can interact with Goa in three main ways:
+插件可通过三种主要方式与 Goa 交互：
 
-1. **Add New DSLs**  
-   Plugins can provide additional design language constructs that work alongside
-   Goa's core DSL. For example, the
-   [CORS plugin](https://github.com/goadesign/plugins/tree/master/cors) adds DSL for
-   defining cross-origin policies:
+1. **新增 DSL**  
+   插件可提供与 Goa 核心 DSL 并行工作的设计语言构造。例如，
+   [CORS 插件](https://github.com/goadesign/plugins/tree/master/cors) 添加了用于定义跨域策略的 DSL：
 
 ```go
 var _ = Service("calc", func() {
-    Description("Calculator service")
+    Description("计算器服务")
     
-    // CORS plugin adds this DSL
+    // CORS 插件新增的 DSL
     cors.Origin("/.*localhost.*/", func() {
         cors.Headers("X-Shared-Secret")
         cors.Methods("GET", "POST")
@@ -247,35 +216,30 @@ var _ = Service("calc", func() {
 })
 ```
 
-2. **Modify Generated Code**  
-   Plugins can inspect and modify the files Goa generates, or add new files
-   entirely: The plugin `Generate` function is called by Goa during code
-   generation after the design has been evaluated. It receives:
+2. **修改生成代码**  
+   插件可以检查并修改 Goa 生成的文件，或新增文件：插件的 `Generate` 函数会在设计评估完成后的代码生成阶段被 Goa 调用。它接收：
    
-   - `genpkg`: The Go package path where generated code will be placed
-   - `roots`: The evaluated design roots containing all design data
-   - `files`: The array of files that Goa has generated so far
+   - `genpkg`：生成代码将被放置的 Go 包路径
+   - `roots`：已评估的设计根节点，包含全部设计数据
+   - `files`：到目前为止 Goa 已生成的文件数组
    
-   This function allows plugins to inspect and modify any generated files, add
-   entirely new files to the output, remove files from generation, and transform
-   code based on the design. The flexibility of this function enables plugins to
-   have complete control over the final generated codebase.
+   该函数允许插件检查与修改任何生成文件、向输出新增文件、从生成中移除文件，以及基于设计转换代码。其灵活性使插件可对最终生成的代码库进行全面控制。
    
-#### Common Use Cases
+#### 常见用例
 
-Plugins are typically used to:
-- Add support for specific protocols or transports (like CORS)
-- Generate additional documentation formats
-- Implement custom validation rules
-- Add cross-cutting concerns (logging, metrics, etc.)
-- Generate supporting configuration files
+插件通常用于：
+- 为特定协议或传输方式添加支持（如 CORS）
+- 生成额外的文档格式
+- 实现自定义校验规则
+- 添加跨领域关注点（日志、指标等）
+- 生成配套的配置文件
 
-#### Getting Started with Plugins
+#### 插件快速上手
 
-To use an existing plugin:
-1. Import the plugin package
-2. Use its DSL in your design
-3. Run `goa gen` as usual - the plugin automatically integrates
+使用现有插件：
+1. 导入插件包
+2. 在设计中使用其 DSL
+3. 像往常一样运行 `goa gen`——插件会自动集成
 
 ```go
 import (
@@ -284,12 +248,12 @@ import (
 )
 ```
 
-{{< alert title="Learn More About Plugins" color="primary" >}}
-This is just an overview of Goa's plugin system. For detailed information about:
-- Creating custom plugins
-- Available plugin hooks
-- Plugin best practices
-- Example implementations
+{{< alert title="了解更多插件信息" color="primary" >}}
+以上仅是 Goa 插件系统的概览。关于以下内容的详细信息：
+- 如何创建自定义插件
+- 可用的插件钩子
+- 插件最佳实践
+- 示例实现
 
-See the dedicated [Plugins](../../6-advanced/1-plugins) section.
+请参阅专门的 [插件](../../6-advanced/1-plugins) 章节。
 {{< /alert >}}

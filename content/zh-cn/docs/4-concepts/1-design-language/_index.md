@@ -1,47 +1,38 @@
 ---
-title: "Design Language"
-linkTitle: "Design Language"
+title: "设计语言"
+linkTitle: "设计语言"
 weight: 1
 description: >
-  Explore Goa's powerful domain-specific language (DSL) for API design, offering a declarative approach to service development with built-in code generation and validation.
+  探索 Goa 用于 API 设计的强大领域特定语言（DSL）。它以声明式方式进行服务开发，并内置代码生成与校验能力。
 menu:
   main:
     parent: "Concepts"
     weight: 1
 ---
 
-Learn about Goa's Design Language (DSL), a powerful domain-specific language
-that revolutionizes API design. The DSL is the cornerstone of Goa's approach to
-service development, offering a unique blend of simplicity and sophistication
-that sets it apart from traditional API development methods.
+了解 Goa 的设计语言（DSL）。它是一种强大的领域特定语言，正在重塑 API 设计方式。DSL 是 Goa 方法论的基石，兼具简洁与强大，与传统 API 开发方式相比有显著优势。
 
-## Why Goa's DSL?
+## 为什么选择 Goa 的 DSL？
 
-Goa's DSL empowers you to express your service design in a clear, declarative
-way while enforcing best practices and maintaining consistency. It acts as a
-single source of truth for your entire API, automatically generating everything
-from documentation to server code to client SDKs.
+Goa 的 DSL 让你以清晰、声明式的方式表达服务设计，同时强制执行最佳实践并保持一致性。它充当你整个 API 的“唯一真实来源”，可以自动生成从文档到服务端代码再到客户端 SDK 的一切内容。
 
-Key benefits include:
+关键优势包括：
 
-* **Type Safety**: Define your types once, use them everywhere with complete confidence
-* **Contract-First Design**: Focus on your API's design before diving into implementation details
-* **Automatic Validation**: Get built-in request and response validation without writing boilerplate
-* **Code Generation**: Transform your designs into production-ready code with a single command
-* **Living Documentation**: Keep your API documentation always in sync with your implementation
+* 类型安全：类型定义一次，处处复用，信心十足
+* 契约优先设计：在实现之前先聚焦 API 设计
+* 自动校验：请求与响应的校验开箱即用，无需样板代码
+* 代码生成：一条命令将设计转化为可投产的代码
+* 活文档：让 API 文档与实现始终保持同步
 
-## Getting Started
+## 快速开始
 
-The DSL is organized into logical sections that guide you through the API design process:
+DSL 按照 API 设计流程划分为若干逻辑模块，循序渐进：
 
-* Start with [Data Modeling](./1-data-modeling) to define your service's types and structures
-* Learn about [Service Design](./2-services) to specify endpoints and their behaviors
-* Explore [Security](./3-security) to implement authentication and authorization
-* Master [Error Handling](./4-error-handling) for robust API responses
+* 从 [数据建模](./1-data-modeling) 入手，定义服务的类型与结构
+* 学习 [服务设计](./2-services)，指定端点及其行为
+* 探索 [安全](./3-security)，实现认证与鉴权
+* 掌握 [错误处理](./4-error-handling)，产出健壮的 API 响应
 
-Whether you're building a simple REST API or a complex microservices
-architecture, Goa's DSL provides the tools and abstractions you need to create
-professional, production-ready services.
+无论你在构建简单的 REST API，还是复杂的微服务架构，Goa 的 DSL 都能提供创建专业、面向生产的服务所需的工具与抽象。
 
-Ready to dive in? Let's start with data modeling, the foundation of any well-designed API.
-
+准备好开始了吗？让我们从任何优秀 API 的基石——数据建模——开始。

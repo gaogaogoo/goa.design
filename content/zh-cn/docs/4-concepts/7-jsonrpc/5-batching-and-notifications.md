@@ -1,31 +1,19 @@
 ---
-title: "Batching and Notifications"
+title: "批处理与通知"
 weight: 5
 ---
 
-Batching and notifications make JSON‑RPC efficient and flexible. Batching lets a
-client send multiple calls in a single HTTP request. Notifications let a client
-(or server in streaming transports) send fire‑and‑forget messages that do not
-expect a response.
+批处理与通知让 JSON‑RPC 更高效、更灵活。批处理允许客户端在单个 HTTP 请求中发送多次调用。通知允许客户端（或在流式传输中由服务器）发送不期望响应的“发后即忘”消息。
 
-## Batching
+## 批处理
 
-Use batching to reduce round‑trips when performing several independent calls and
-to improve throughput for chatty clients that can tolerate independent successes
-and failures.
+在执行多个相互独立的调用时使用批处理可减少往返次数；对于健谈型客户端（请求频繁且能容忍互不影响的成功/失败），批处理有助于提升吞吐量。
 
-How it works: Send a JSON array of JSON‑RPC request objects. The server
-processes each entry independently and writes responses only for entries that
-include an `id`. Responses appear in the same order as their corresponding
-requests; notifications are omitted. Batching is supported on HTTP only;
-streaming transports (SSE/WebSocket) do not accept batch arrays.
+工作方式：发送一个由多个 JSON‑RPC 请求对象组成的 JSON 数组。服务器独立处理数组中的每一项，仅为包含 `id` 的项写入响应。响应的顺序与其对应的请求顺序一致；通知（无 `id`）会被省略。批处理仅支持 HTTP；流式传输（SSE/WebSocket）不接受批数组。
 
-In Goa, the generated server handles the JSON‑RPC envelopes for each batch
-entry. Your method implementations receive typed payloads and return typed
-results or errors as usual—you do not parse the batch array or the JSON‑RPC
-envelopes yourself.
+在 Goa 中，生成的服务器会为每个批处理条目处理 JSON‑RPC 封装（envelope）。你的方法实现照常接收类型化的负载并返回类型化的结果或错误——无需手动解析批数组或 JSON‑RPC 封装。
 
-Request body (JSON only):
+请求体（仅 JSON）：
 
 ```json
 [
@@ -35,16 +23,16 @@ Request body (JSON only):
 ]
 ```
 
-Example HTTP call:
+HTTP 调用示例：
 
 ```bash
 POST /rpc HTTP/1.1
 Content-Type: application/json
 
-[ ... see JSON body above ... ]
+[ ... 见上方 JSON 正文 ... ]
 ```
 
-Response:
+响应：
 
 ```json
 [
@@ -53,49 +41,30 @@ Response:
 ]
 ```
 
-Operational notes: IDs should be unique per batch (duplicates make correlation
-ambiguous). Batches are not atomic—some entries can succeed while others fail.
-Avoid mixing long‑running and short operations in the same batch to reduce
-head‑of‑line blocking on the client, and enforce reasonable body size limits to
-prevent abuse.
+运行注意：同一批内的 ID 应唯一（否则会造成关联歧义）。批处理并非原子——有的条目可以成功而其他条目失败。避免在同一批中混合长任务与短任务，以减少客户端的队头阻塞；并为请求体设置合理的大小限制以防滥用。
 
-## Notifications
+## 通知
 
-A notification is a JSON‑RPC request without an `id`, so the sender does not
-expect a response. On SSE/WebSocket, server‑initiated messages are notifications
-and also omit `id`.
+通知是未包含 `id` 的 JSON‑RPC 请求，因此发送方不期望响应。在 SSE/WebSocket 中，服务器发起的消息也属于通知且同样不携带 `id`。
 
-Server‑side, Goa also handles the envelope for notifications. Your handlers
-receive the usual typed payloads (or streaming server streams) and do not need
-to check or set the JSON‑RPC `id`.
+在服务器端，Goa 同样会处理通知的封装。你的处理器仍然接收常规的类型化负载（或流式服务器流），无需检查或设置 JSON‑RPC 的 `id`。
 
-Typical uses include logging, telemetry, presence, or any update where the
-sender does not need a reply. In streaming sessions, server‑to‑client updates
-are notifications.
+典型用途包括日志、遥测、在线状态，或任何发送方不需要回复的更新。在流式会话中，服务器到客户端的更新属于通知。
 
-Client example (HTTP notification):
+客户端示例（HTTP 通知）：
 
 ```json
 {"jsonrpc": "2.0", "method": "audit.log", "params": {"action": "login", "user": "alice"}}
 ```
 
-Do not rely on notifications for critical operations; there is no delivery
-guarantee. Prefer small, self‑contained payloads; large notifications cannot be
-retried safely. For observability, consider sending a follow‑up request when
-acknowledgement is required.
+请勿将通知用于关键操作；通知不保证投递。建议使用小而自包含的负载；体量过大的通知无法安全重试。为增强可观测性，当确需确认时，可考虑发送后续请求实现显式确认。
 
-## Design and implementation
+## 设计与实现
 
-No special DSL is required for batching; any JSON‑RPC method exposed over HTTP
-can be batched. Notifications are created by clients omitting the `id`.
-Server‑side, use the streaming helpers (`Send`, `SendNotification`) to emit
-notifications on SSE/WebSocket.
+批处理无需特殊 DSL；任何通过 HTTP 暴露的 JSON‑RPC 方法都可以参与批处理。通知由客户端通过省略 `id` 来创建。服务器端，在 SSE/WebSocket 上使用流式辅助方法（`Send`、`SendNotification`）发送通知。
 
-## Best practices
+## 最佳实践
 
-Map application errors to appropriate JSON‑RPC codes so batch responses are
-predictable. Document which methods are safe to call as notifications. Validate
-batch sizes and entries server‑side and reject malformed entries with proper
-error codes.
-
-
+- 将应用错误映射到适当的 JSON‑RPC 错误码，使批响应更可预测。
+- 文档化哪些方法适合作为通知调用。
+- 在服务器端校验批大小与条目，并使用合适的错误码拒绝格式不正确的条目。

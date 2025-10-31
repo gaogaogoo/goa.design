@@ -1,300 +1,300 @@
 ---
-title: "HTTP Routing"
-linkTitle: "Routing"
+title: "HTTP 路由"
+linkTitle: "路由"
 weight: 2
-description: "Learn how Goa handles HTTP routing, including path patterns, parameters, wildcards, and best practices for designing clean URLs."
+description: "了解 Goa 如何处理 HTTP 路由，包括路径模式、参数、通配符，以及设计干净 URL 的最佳实践。"
 menu:
   main:
     parent: "HTTP Advanced Topics"
     weight: 2
 ---
 
-Goa provides a powerful routing system that maps HTTP requests to your service methods. This guide covers:
+Goa 提供了强大的路由系统，可将 HTTP 请求映射到服务方法。本文将介绍：
 
-- Basic routing concepts and service definitions
-- HTTP methods and URL patterns
-- Parameter handling (path, query, and wildcards)
-- Response status codes
-- Best practices for API design
-- Service relationships and nested resources
+- 路由基础概念与服务定义
+- HTTP 方法与 URL 路径模式
+- 参数处理（路径、查询和通配符）
+- 响应状态码
+- API 设计最佳实践
+- 服务关系与嵌套资源
 
-## Basic Routing
+## 路由基础
 
-In Goa, routes are defined in your design using the `HTTP` function within a Service definition. The `HTTP` function allows you to specify how your service methods are exposed over HTTP.
+在 Goa 中，路由通过 Service 定义内的 `HTTP` 函数在设计中声明。`HTTP` 函数用于指定服务方法如何通过 HTTP 暴露。
 
-Here's a basic example:
+基础示例：
 
 ```go
 var _ = Service("calculator", func() {
-    // Define service-wide HTTP settings
+    // 定义服务级别的 HTTP 设置
     HTTP(func() {
-        // Set a base path for all endpoints in this service
+        // 为该服务的所有端点设置基础路径
         Path("/calculator")
     })
 
     Method("add", func() {
-        // Define method payload
+        // 定义方法载荷
         Payload(func() {
-            // Field order matters - tag 1 is first
-            Field(1, "a", Int, "First operand")
-            Field(2, "b", Int, "Second operand")
+            // 字段顺序重要 - tag 1 为第一个
+            Field(1, "a", Int, "第一个操作数")
+            Field(2, "b", Int, "第二个操作数")
         })
-        // Define method result
+        // 定义方法结果
         Result(Int)
-        // Define HTTP transport
+        // 定义 HTTP 传输
         HTTP(func() {
-            POST("/add")     // Handles POST /calculator/add
+            POST("/add")     // 处理 POST /calculator/add
         })
     })
 })
 ```
 
-The above example:
-1. Creates a service named "calculator"
-2. Sets a base path "/calculator" for all endpoints
-3. Defines an "add" method that:
-   - Takes two integers as input
-   - Returns an integer
-   - Is accessible via HTTP POST at "/calculator/add"
+上述示例：
+1. 创建名为 "calculator" 的服务
+2. 为所有端点设置基础路径 "/calculator"
+3. 定义一个 "add" 方法：
+   - 接受两个整数作为输入
+   - 返回一个整数
+   - 通过 HTTP POST 访问路径 "/calculator/add"
 
-## HTTP Methods and Paths
+## HTTP 方法与路径
 
-Goa supports all standard HTTP methods through dedicated DSL functions: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, and `TRACE`. A single service method can handle multiple HTTP methods or paths:
+Goa 通过专用 DSL 函数支持所有标准 HTTP 方法：`GET`、`POST`、`PUT`、`DELETE`、`PATCH`、`HEAD`、`OPTIONS` 和 `TRACE`。一个服务方法可以同时处理多个 HTTP 方法或路径：
 
 ```go
 Method("manage_user", func() {
-    Description("Create or update a user")
+    Description("创建或更新用户")
     Payload(User)
     Result(User)
     HTTP(func() {
-        POST("/users")          // Create user
-        PUT("/users/{user_id}") // Update existing user
-        Response(StatusOK)      // 200 for updates
-        Response(StatusCreated) // 201 for creation
+        POST("/users")          // 创建用户
+        PUT("/users/{user_id}") // 更新现有用户
+        Response(StatusOK)      // 更新返回 200
+        Response(StatusCreated) // 创建返回 201
     })
 })
 ```
 
-## Parameter Handling
+## 参数处理
 
-### Path Parameters
+### 路径参数
 
-You can capture dynamic values from the URL path using parameters. Path parameters are defined using curly braces `{parameter_name}` and are automatically mapped to payload fields.
+可通过路径参数从 URL 路径中捕获动态值。路径参数使用花括号 `{parameter_name}` 定义，并自动映射到载荷字段。
 
 ```go
 Method("get_user", func() {
-    Description("Retrieve a user by their ID")
+    Description("根据 ID 检索用户")
     Payload(func() {
-        // The user_id field will be populated from the URL path
-        Field(1, "user_id", String, "User ID from the URL path")
+        // user_id 字段将从 URL 路径中填充
+        Field(1, "user_id", String, "来自 URL 路径的用户 ID")
     })
     Result(User)
     HTTP(func() {
-        GET("/users/{user_id}")  // Maps {user_id} to payload.UserID
+        GET("/users/{user_id}")  // 将 {user_id} 映射到 payload.UserID
     })
 })
 ```
 
-### Parameter Types and Mapping
+### 参数类型与映射
 
-In Goa, parameter types are defined in the payload definition, not in the URL pattern. The URL pattern only defines how to map transport names to payload fields.
+在 Goa 中，参数类型在载荷定义中声明，而不是在 URL 模式中。URL 模式仅用于定义如何将传输名称映射到载荷字段。
 
-1. **Simple Payload with Primitive Type**
+1. **原始类型载荷**
    ```go
    Method("get_user", func() {
-       // When payload is a primitive type, it maps directly to the path parameter
-       Payload(String, "User ID")
+       // 当载荷为原始类型时，直接映射到路径参数
+       Payload(String, "用户 ID")
        Result(User)
        HTTP(func() {
-           GET("/users/{user_id}")  // user_id value becomes the payload
+           GET("/users/{user_id}")  // user_id 的值成为整个载荷
        })
    })
    ```
 
-2. **Structured Payload with Direct Mapping**
+2. **结构化载荷的直接映射**
    ```go
    Method("get_user", func() {
        Payload(func() {
-           // Parameter type (Int) is defined here in the payload
-           Field(1, "user_id", Int, "User ID")
+           // 参数类型（Int）在载荷中声明
+           Field(1, "user_id", Int, "用户 ID")
        })
        Result(User)
        HTTP(func() {
-           GET("/users/{user_id}")  // Maps directly to payload.UserID
+           GET("/users/{user_id}")  // 直接映射到 payload.UserID
        })
    })
    ```
 
-3. **Transport Name Mapping**
+3. **传输名称映射**
    ```go
    Method("get_user", func() {
        Payload(func() {
-           // Internal field name is "id"
-           Field(1, "id", Int, "User ID")
+           // 内部字段名为 "id"
+           Field(1, "id", Int, "用户 ID")
        })
        HTTP(func() {
-           // Use user_id in URL but map to payload.ID
+           // URL 使用 user_id，但映射到 payload.ID
            GET("/users/{user_id:id}")
        })
    })
    ```
 
-The `{name:field}` syntax in the path pattern is used for name mapping only:
-- `name` is what appears in the URL
-- `field` is the name of the field in your payload
+路径模式中的 `{name:field}` 语法仅用于名称映射：
+- `name` 是 URL 中出现的名称
+- `field` 是载荷中的字段名
 
-For primitive payloads, the path parameter value becomes the entire payload:
+对于原始类型载荷，路径参数值会成为整个载荷：
 
 ```go
 Method("download", func() {
-    // Entire payload is a string representing the file path
-    Payload(String, "Path to file")
+    // 整个载荷是表示文件路径的字符串
+    Payload(String, "文件路径")
     HTTP(func() {
-        GET("/files/{*path}")  // Captured path becomes the payload
+        GET("/files/{*path}")  // 捕获的路径成为载荷
     })
 }
 
 Method("get_version", func() {
-    // Payload is a simple integer
-    Payload(Int, "API version number")
+    // 载荷是一个简单的整数
+    Payload(Int, "API 版本号")
     HTTP(func() {
-        GET("/api/{version}")  // version number becomes the payload
+        GET("/api/{version}")  // 版本号成为载荷
     })
 })
 ```
 
-When using structured payloads, you can combine path parameters with other payload fields:
+使用结构化载荷时，可将路径参数与其他载荷字段组合：
 
 ```go
 Method("update_user_profile", func() {
     Payload(func() {
-        // Path parameter
-        Field(1, "id", Int, "User ID")
-        // Body fields
-        Field(2, "name", String, "User's name")
-        Field(3, "email", String, "User's email")
+        // 路径参数
+        Field(1, "id", Int, "用户 ID")
+        // 请求体字段
+        Field(2, "name", String, "用户姓名")
+        Field(3, "email", String, "用户邮箱")
     })
     HTTP(func() {
-        PUT("/users/{user_id:id}")  // Maps URL's user_id to payload.ID
-        Body("name", "email")       // These fields come from request body
+        PUT("/users/{user_id:id}")  // 将 URL 的 user_id 映射到 payload.ID
+        Body("name", "email")       // 这些字段来自请求体
     })
 })
 
-### Query Parameters
+### 查询参数
 
-Query string parameters are defined using the `Param` function and must correspond to payload fields. You can set default values and validation rules:
+查询字符串参数通过 `Param` 函数定义，且必须对应载荷字段。你可以设置默认值和校验规则：
 
 ```go
 Method("list_users", func() {
-    Description("List users with pagination")
+    Description("分页列出用户")
     Payload(func() {
-        Field(1, "page", Int, "Page number", func() {
-            Default(1)        // Default to page 1
-            Minimum(1)        // Page must be positive
+        Field(1, "page", Int, "页码", func() {
+            Default(1)        // 默认第 1 页
+            Minimum(1)        // 页码必须为正
         })
-        Field(2, "per_page", Int, "Items per page", func() {
-            Default(20)       // Default to 20 items
+        Field(2, "per_page", Int, "每页数量", func() {
+            Default(20)       // 默认每页 20 条
             Minimum(1)
-            Maximum(100)      // Limit maximum items
+            Maximum(100)      // 限制最大数量
         })
     })
     Result(CollectionOf(User))
     HTTP(func() {
         GET("/users")
-        // Map payload fields to query parameters
+        // 将载荷字段映射到查询参数
         Param("page")
         Param("per_page")
     })
 })
 
-### Wildcards and Catch-all Routes
+### 通配符与兜底路由
 
-For flexible path matching, use the asterisk syntax (`*path`) to capture all remaining path segments. The captured value is available in the payload:
+为了灵活的路径匹配，使用星号语法（`*path`）以捕获剩余的所有路径段。捕获的值会在载荷中可用：
 
 ```go
 Method("serve_files", func() {
-    Description("Serve static files from a directory")
+    Description("从目录服务静态文件")
     Payload(func() {
-        // The path field will contain all segments after /files/
-        Field(1, "path", String, "Path to the file")
+        // path 字段将包含 /files/ 之后的所有段
+        Field(1, "path", String, "文件路径")
     })
     HTTP(func() {
-        GET("/files/*path")    // Matches /files/docs/image.png
+        GET("/files/*path")    // 匹配 /files/docs/image.png
     })
 })
 ```
 
-## API Design Best Practices
+## API 设计最佳实践
 
-### Resource Naming
+### 资源命名
 
-Use nouns to represent resources and let HTTP methods define the actions:
+使用名词表示资源，让 HTTP 方法决定动作：
 
 ```go
 HTTP(func() {
-    // Good - HTTP method indicates the action
-    GET("/articles")        // List articles
-    POST("/articles")       // Create article
-    GET("/articles/{id}")   // Get one article
-    PUT("/articles/{id}")   // Update article
-    DELETE("/articles/{id}") // Delete article
+    // 推荐 - 使用 HTTP 方法表达动作
+    GET("/articles")        // 列出文章
+    POST("/articles")       // 创建文章
+    GET("/articles/{id}")   // 获取单篇文章
+    PUT("/articles/{id}")   // 更新文章
+    DELETE("/articles/{id}") // 删除文章
 
-    // Avoid - action in URL
+    // 避免 - 将动作写入 URL
     GET("/list-articles")
     POST("/create-article")
 })
 ```
 
-### Consistent Pluralization
+### 复数一致性
 
-Use plural nouns for collection endpoints and maintain consistency:
+集合端点使用复数名词并保持一致：
 
 ```go
 HTTP(func() {
-    // Good - consistent use of plural
-    GET("/users")          // List users
-    GET("/users/{id}")     // Get one user
-    POST("/users")         // Create user
+    // 推荐 - 始终使用复数
+    GET("/users")          // 列出用户
+    GET("/users/{id}")     // 获取单个用户
+    POST("/users")         // 创建用户
     
-    // Avoid mixing singular and plural
-    GET("/user")          // Don't use singular
-    GET("/users/{id}")    // Don't mix conventions
+    // 避免混用单复数
+    GET("/user")          // 不要使用单数
+    GET("/users/{id}")    // 不要混用约定
 })
 ```
 
-### Path Prefix Hierarchy
+### 路径前缀层级
 
-Goa allows you to define path prefixes at different levels of your API design:
+Goa 允许在 API 设计的不同层级定义路径前缀：
 
-1. **API Level** - Applies to all services:
+1. **API 层级** - 作用于所有服务：
 ```go
 var _ = API("myapi", func() {
     HTTP(func() {
-        Path("/api")  // Global prefix for all services
+        Path("/api")  // 所有服务的全局前缀
     })
 })
 ```
 
-2. **Service Level** - Applies to all methods in a service:
+2. **服务层级** - 作用于服务内所有方法：
 ```go
 var _ = Service("users", func() {
     HTTP(func() {
-        Path("/v1/users")  // Prefix for all methods in this service
+        Path("/v1/users")  // 该服务所有方法的前缀
     })
 })
 ```
 
-The final URL path is constructed by combining these prefixes in order. For example:
+最终 URL 路径通过按顺序组合这些前缀构造。例如：
 
 ```go
 var _ = API("myapi", func() {
     HTTP(func() {
-        Path("/api")  // API-level prefix
+        Path("/api")  // API 级前缀
     })
 
     Service("users", func() {
         HTTP(func() {
-            Path("/v1/users")  // Service-level prefix
+            Path("/v1/users")  // 服务级前缀
         })
 
         Method("show", func() {
@@ -302,55 +302,52 @@ var _ = API("myapi", func() {
                 Field(1, "id", Int)
             })
             HTTP(func() {
-                GET("/{id}")  // Method path
+                GET("/{id}")  // 方法路径
             })
         })
     })
 })
 ```
 
-This results in the path `/api/v1/users/{id}` for the show method.
+这将使 show 方法的路径成为 `/api/v1/users/{id}`。
 
-### API Versioning
+### API 版本
 
-Version your API using path prefixes:
+使用路径前缀为 API 进行版本化：
 
 ```go
 var _ = Service("users", func() {
     HTTP(func() {
-        Path("/v1")  // All endpoints will be under /v1
+        Path("/v1")  // 所有端点都在 /v1 下
     })
     
     Method("list", func() {
         HTTP(func() {
-            GET("/users")  // Final path: /v1/users
+            GET("/users")  // 最终路径：/v1/users
         })
     })
 })
 ```
 
-## Service Relationships
+## 服务关系
 
-### Parent Services
+### 父服务
 
-Goa provides the `Parent` DSL to establish relationships between services. When you specify a parent service:
-1. The parent service's canonical path is used as a prefix for all the child service's HTTP endpoints
-2. Parent method payload attributes that map to path parameters are automatically merged into child method payloads
+Goa 提供 `Parent` DSL 来建立服务之间的关系。指定父服务后：
+1. 父服务的规范路径将作为所有子服务 HTTP 端点的前缀
+2. 父方法中映射到路径参数的载荷属性会自动合并到子方法的载荷中
 
-### Canonical Methods
+### 规范方法（Canonical Method）
 
-By default, Goa uses the "show" method as the canonical method for a service.
-The canonical method's HTTP path is used as the prefix for all child service
-endpoints. You can override this using the `CanonicalMethod` function in the
-service's HTTP expression.
+默认情况下，Goa 使用 "show" 方法作为服务的规范方法。规范方法的 HTTP 路径将用作所有子服务端点的前缀。你可以在服务的 HTTP 表达式中使用 `CanonicalMethod` 函数进行覆盖。
 
-Here's an example:
+示例：
 
 ```go
 var _ = Service("users", func() {
     HTTP(func() {
         Path("/users/{user_id}")
-        // Override the default "show" method
+        // 覆盖默认的 "show" 方法
         CanonicalMethod("get")
     })
     
@@ -359,132 +356,131 @@ var _ = Service("users", func() {
             Field(1, "user_id", String)
         })
         HTTP(func() {
-            GET("")  // Results in /users/{user_id}
+            GET("")  // 结果路径为 /users/{user_id}
         })
     })
 })
 
 var _ = Service("posts", func() {
-    // Specify users as the parent service
+    // 指定 users 作为父服务
     Parent("users")
     
     Method("list", func() {
-        // user_id is automatically inherited from parent's canonical method payload
+        // user_id 会自动从父服务的规范方法载荷继承
         HTTP(func() {
-            GET("/posts")  // Results in /users/{user_id}/posts
+            GET("/posts")  // 结果路径为 /users/{user_id}/posts
         })
     })
 })
 ```
 
-In this example:
-1. The `users` service specifies "get" as its canonical method instead of the default "show"
-2. The canonical method's path (`/users/{user_id}`) becomes the prefix for all child service endpoints
-3. The `posts` service inherits this prefix and the `user_id` parameter from the parent's canonical method
-4. The final path for the `list` method becomes `/users/{user_id}/posts`
+在此示例中：
+1. `users` 服务将规范方法指定为 "get"，而不是默认的 "show"
+2. 规范方法的路径（`/users/{user_id}`）成为所有子服务端点的前缀
+3. `posts` 服务继承该前缀以及来自父服务规范方法的 `user_id` 参数
+4. `list` 方法的最终路径为 `/users/{user_id}/posts`
 
-### Nested Resources
+### 嵌套资源
 
-Express resource relationships through nested paths. This can be done either using the Parent DSL (as shown above) or by explicitly defining nested paths:
+通过嵌套路径表达资源关系。可使用上面的 Parent DSL，或显式定义嵌套路径：
 
 ```go
 var _ = Service("social", func() {
-    // Define methods for user resources
+    // 定义用户资源的方法
     Method("list_users", func() {
         HTTP(func() {
-            GET("/users")  // List all users
+            GET("/users")  // 列出所有用户
         })
     })
 
     Method("get_user", func() {
         Payload(func() {
-            Field(1, "user_id", String, "User ID")
+            Field(1, "user_id", String, "用户 ID")
         })
         HTTP(func() {
-            GET("/users/{user_id}")  // Get a specific user
+            GET("/users/{user_id}")  // 获取指定用户
         })
     })
 
-    // Methods for posts under a user
+    // 用户下的文章方法
     Method("list_user_posts", func() {
         Payload(func() {
-            Field(1, "user_id", String, "User ID")
-            Field(2, "limit", Int, "Maximum number of posts to return")
+            Field(1, "user_id", String, "用户 ID")
+            Field(2, "limit", Int, "返回的最大帖子数量")
         })
         HTTP(func() {
-            GET("/users/{user_id}/posts")  // List posts for a user
-            Param("limit")  // Query parameter
+            GET("/users/{user_id}/posts")  // 列出某用户的帖子
+            Param("limit")  // 查询参数
         })
     })
 
     Method("create_user_post", func() {
         Payload(func() {
-            Field(1, "user_id", String, "User ID")
-            Field(2, "title", String, "Post title")
-            Field(3, "content", String, "Post content")
+            Field(1, "user_id", String, "用户 ID")
+            Field(2, "title", String, "帖子标题")
+            Field(3, "content", String, "帖子内容")
         })
         HTTP(func() {
-            POST("/users/{user_id}/posts")  // Create a post for a user
-            Body("title", "content")  // These fields go in the request body
+            POST("/users/{user_id}/posts")  // 为用户创建帖子
+            Body("title", "content")  // 这些字段放入请求体
         })
     })
 
-    // Methods for comments under a post
+    // 帖子下的评论方法
     Method("list_post_comments", func() {
         Payload(func() {
-            Field(1, "user_id", String, "User ID")
-            Field(2, "post_id", String, "Post ID")
+            Field(1, "user_id", String, "用户 ID")
+            Field(2, "post_id", String, "帖子 ID")
         })
         HTTP(func() {
-            GET("/users/{user_id}/posts/{post_id}/comments")  // List comments on a post
+            GET("/users/{user_id}/posts/{post_id}/comments")  // 列出某帖子的评论
         })
     })
 })
 ```
 
-This approach:
-1. Creates a clear hierarchy in your URLs (users → posts → comments)
-2. Makes relationships between resources explicit
-3. Maintains consistency in how nested resources are accessed
-4. Allows for proper scoping of operations (e.g., posts within a specific user)
+这种方式：
+1. 在 URL 中建立清晰的层级（users → posts → comments）
+2. 明确资源之间的关系
+3. 保持访问嵌套资源的一致性
+4. 允许对操作进行正确的作用域限定（例如仅限特定用户下的帖子）
 
-You can also use service-wide path prefixes to group related endpoints:
+你也可以通过服务级路径前缀将相关端点归组：
 
 ```go
 var _ = Service("social", func() {
     HTTP(func() {
-        Path("/v1/social")  // Prefix for all endpoints in this service
+        Path("/v1/social")  // 该服务所有端点的前缀
     })
     
     Method("list_users", func() {
         HTTP(func() {
-            GET("/users")  // Final path: /v1/social/users
+            GET("/users")  // 最终路径：/v1/social/users
         })
     })
     
     Method("get_user_posts", func() {
         HTTP(func() {
-            GET("/users/{user_id}/posts")  // Final path: /v1/social/users/{user_id}/posts
+            GET("/users/{user_id}/posts")  // 最终路径：/v1/social/users/{user_id}/posts
         })
     })
 })
 ```
 
-## Generated Code
+## 生成代码
 
-Goa generates all the necessary routing code based on your design. The generated code includes:
+Goa 会根据你的设计生成所有必要的路由代码。生成的代码包括：
 
-1. **URL Mapping**: Routes HTTP requests to the appropriate service methods
-2. **Parameter Handling**: 
-   - Extracts and validates path parameters
-   - Processes query parameters
-   - Handles request bodies
-3. **Content Negotiation**: 
-   - Handles Accept headers
-   - Manages response formats
-4. **Error Handling**:
-   - Maps errors to HTTP status codes
-   - Generates consistent error responses
+1. **URL 映射**：将 HTTP 请求路由到相应的服务方法
+2. **参数处理**：
+   - 提取并校验路径参数
+   - 处理查询参数
+   - 解析请求体
+3. **内容协商**：
+   - 处理 Accept 头
+   - 管理响应格式
+4. **错误处理**：
+   - 将错误映射到 HTTP 状态码
+   - 生成一致的错误响应
 
-This means you can focus on implementing your business logic while Goa handles
-all the HTTP transport details.
+这意味着你可以专注于实现业务逻辑，而由 Goa 负责所有 HTTP 传输细节。
