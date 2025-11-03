@@ -1,3 +1,4 @@
+---
 title: "分布式追踪"
 description: "使用 OpenTelemetry 实现分布式追踪"
 weight: 2

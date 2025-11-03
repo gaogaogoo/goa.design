@@ -49,20 +49,10 @@ curl -N -X POST localhost:8080/rpc -H 'Accept: text/event-stream' \
 var _ = Service("summaries", func() {
   Method("report", func() {
     Payload(func() { /* ... */ })
-
     Result(func() { /* HTTP 的非流式形状 */ })
     StreamingResult(func() { /* SSE 的流式形状 */ })
 
-    HTTP(func() {
-      // 一个路由，两种传输
-      Route("POST", "/rpc")
-
-      // 通过 Accept 选择 SSE；否则为 HTTP
-      RequestEncoder(func() {
-        Header("Accept", "text/event-stream")
-      })
-    })
-  })
+    JSONRPC(func() { ServerSentEvents(func() {}) })
 })
 ```
 

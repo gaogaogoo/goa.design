@@ -1,6 +1,6 @@
 ---
-_title: 领域与传输
-_weight: 1
+title: 领域与传输
+weight: 1
 description: "了解 Goa 中领域错误和传输错误之间的区别，以及如何有效地在它们之间进行映射。"
 ---
 

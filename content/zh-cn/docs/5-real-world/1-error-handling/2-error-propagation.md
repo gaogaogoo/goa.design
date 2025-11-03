@@ -1,3 +1,4 @@
+---
 title: 错误传播
 description: "了解错误如何在 Goa 服务的各层中传播"
 weight: 2

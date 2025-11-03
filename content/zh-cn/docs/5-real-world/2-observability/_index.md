@@ -1,3 +1,4 @@
+---
 title: "可观测性"
 description: "理解并在 Goa 服务中实现可观测性"
 weight: 2

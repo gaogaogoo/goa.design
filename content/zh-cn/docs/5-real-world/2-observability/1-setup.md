@@ -1,3 +1,4 @@
+---
 title: "基础设置"
 description: "配置 Clue 与 OpenTelemetry"
 weight: 1

@@ -184,17 +184,6 @@ curl -X POST http://localhost:8080/concerts \
 
 更多关于内容协商的细节，参见 [Content Negotiation](../../4-concepts/3-http/1-content)。
 
-## 总结
-
-你已经学会：
-- 支持 MessagePack 等高效二进制格式
-- 专业地处理自定义内容类型
-- 实现特殊编码逻辑
-- 掌握内容协商
-
-现在你的 Concerts API 能够以多种格式进行数据交换，更加通用且高性能。无论客户端偏好 JSON 还是 MessagePack，你都已做好准备。
-
-本系列 REST API 教程至此完成。你已经构建了一个具备自定义编码支持的完整 Concerts API，可直接用于生产环境！
 
 ## 总结
 

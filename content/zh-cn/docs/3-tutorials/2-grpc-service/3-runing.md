@@ -68,14 +68,18 @@ import (
 
 func main() {
     conn, err := grpc.Dial("localhost:8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
-    if err != nil { log.Fatalf("Failed to connect: %v", err) }
+    if err != nil {
+    	log.Fatalf("Failed to connect: %v", err)
+    }
     defer conn.Close()
 
     grpcc := genclient.NewClient(conn)
     c := gengreeter.NewClient(grpcc.SayHello())
 
     res, err := c.SayHello(context.Background(), &gengreeter.SayHelloPayload{"Alice"})
-    if err != nil { log.Fatalf("Error calling SayHello: %v", err) }
+    if err != nil {
+    	log.Fatalf("Error calling SayHello: %v", err)
+    }
 
     fmt.Printf("Server response: %s\n", res.Greeting)
 }
