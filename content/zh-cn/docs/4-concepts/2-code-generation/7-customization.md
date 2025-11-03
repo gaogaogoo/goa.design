@@ -518,7 +518,7 @@ var _ = Service("UserService", func() {
 }
 ```
 
-{{< alert title:"重要说明" color:"primary" >}}
+{{< alert title="重要说明" color="primary" >}}
 - 服务级标签会应用到该服务的所有方法
 - 方法级标签会在服务级标签基础上叠加
 - 扩展可在 API、服务与方法级添加
